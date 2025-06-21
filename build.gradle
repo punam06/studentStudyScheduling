@@ -1,0 +1,23 @@
+plugins {
+    id 'application'
+}
+
+group = 'org.example'
+version = '1.0'
+
+application {
+    mainClass = 'org.example.Main' // Your full class name
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17 // or 21
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.googlecode.json-simple:json-simple:1.1.1'
+}
