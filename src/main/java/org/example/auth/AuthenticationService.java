@@ -175,17 +175,17 @@ public class AuthenticationService {
     /**
      * Completes the login process by verifying the OTP.
      *
-     * @param username The username
+     * @param email The email address used for login
      * @param otp The OTP code
      * @return true if OTP is valid and login is successful, false otherwise
      */
-    public boolean completeLogin(String username, String otp) {
+    public boolean completeLogin(String email, String otp) {
         if (usingFallback) {
             // Already logged in via fallbackLogin
             return currentUser != null;
         }
 
-        UserAccount user = pendingVerifications.get(username);
+        UserAccount user = pendingVerifications.get(email);
 
         if (user == null) {
             return false;
@@ -195,7 +195,7 @@ public class AuthenticationService {
         if (otpService.verifyOTP(user.getId(), otp)) {
             // OTP is valid, complete login
             currentUser = user;
-            pendingVerifications.remove(username);
+            pendingVerifications.remove(email);
 
             // Update email verification status if not already verified
             if (!user.isEmailVerified()) {
@@ -203,7 +203,7 @@ public class AuthenticationService {
                 user.setEmailVerified(true);
             }
 
-            System.out.println("Login successful for user: " + username);
+            System.out.println("Login successful for user: " + email);
             return true;
         }
 
@@ -259,7 +259,7 @@ public class AuthenticationService {
             // Try to send verification OTP
             try {
                 if (otpService.generateAndSendOTP(newUser.getId(), email)) {
-                    pendingVerifications.put(username, newUser);
+                    pendingVerifications.put(email, newUser); // Use email instead of username
                     JOptionPane.showMessageDialog(null,
                         "Registration successful! Please check your email for the OTP code to verify your account.",
                         "Registration Successful",
@@ -292,18 +292,21 @@ public class AuthenticationService {
      * Fallback registration method.
      */
     private boolean fallbackRegister(String username, String email, String password, UserAccount.UserRole role) {
-        if (fallbackUsers.containsKey(username)) {
-            JOptionPane.showMessageDialog(null,
-                "Username already exists in this session.",
-                "Registration Error",
-                JOptionPane.ERROR_MESSAGE);
-            return false;
+        // Check if email already exists in fallback users
+        for (UserAccount user : fallbackUsers.values()) {
+            if (email.equals(user.getEmail())) {
+                JOptionPane.showMessageDialog(null,
+                    "Email already exists in this session.",
+                    "Registration Error",
+                    JOptionPane.ERROR_MESSAGE);
+                return false;
+            }
         }
 
         UserAccount newUser = new UserAccount(username, password, role);
         newUser.setEmail(email);
         newUser.setEmailVerified(true); // Skip verification in fallback mode
-        fallbackUsers.put(username, newUser);
+        fallbackUsers.put(email, newUser); // Use email as key instead of username
 
         JOptionPane.showMessageDialog(null,
             "Registration successful! You can now login.\n(Note: This account exists only for this session)",
@@ -359,11 +362,11 @@ public class AuthenticationService {
     /**
      * Resends OTP to a user's email.
      *
-     * @param username The username
+     * @param email The email address
      * @return true if OTP was resent successfully, false otherwise
      */
-    public boolean resendOTP(String username) {
-        UserAccount user = pendingVerifications.get(username);
+    public boolean resendOTP(String email) {
+        UserAccount user = pendingVerifications.get(email);
 
         if (user != null && user.getEmail() != null) {
             return otpService.generateAndSendOTP(user.getId(), user.getEmail());
@@ -375,30 +378,30 @@ public class AuthenticationService {
     /**
      * Cancels a pending login/registration process.
      *
-     * @param username The username to cancel
+     * @param email The email address to cancel
      */
-    public void cancelPendingVerification(String username) {
-        pendingVerifications.remove(username);
+    public void cancelPendingVerification(String email) {
+        pendingVerifications.remove(email);
     }
 
     /**
      * Checks if a user has a pending verification.
      *
-     * @param username The username to check
+     * @param email The email address to check
      * @return true if user has pending verification, false otherwise
      */
-    public boolean hasPendingVerification(String username) {
-        return pendingVerifications.containsKey(username);
+    public boolean hasPendingVerification(String email) {
+        return pendingVerifications.containsKey(email);
     }
 
     /**
      * Gets the email address for a user with pending verification.
      *
-     * @param username The username
+     * @param email The email address
      * @return The email address, or null if no pending verification
      */
-    public String getPendingVerificationEmail(String username) {
-        UserAccount user = pendingVerifications.get(username);
+    public String getPendingVerificationEmail(String email) {
+        UserAccount user = pendingVerifications.get(email);
         return user != null ? user.getEmail() : null;
     }
 
