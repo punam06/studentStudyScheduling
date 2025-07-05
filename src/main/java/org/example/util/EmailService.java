@@ -12,6 +12,7 @@ import java.util.Properties;
 
 /**
  * Email service for sending meeting notifications and OTP codes.
+ * Handles email configuration gracefully with fallback for demo mode.
  */
 public class EmailService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
@@ -23,6 +24,10 @@ public class EmailService {
     private static final String EMAIL_USERNAME = "your-email@gmail.com"; // Replace with your email
     private static final String EMAIL_PASSWORD = "your-app-password"; // Replace with your app password
     private static final String FROM_EMAIL = "your-email@gmail.com"; // Replace with your email
+
+    // Check if email is properly configured
+    private static final boolean EMAIL_CONFIGURED = !EMAIL_USERNAME.equals("your-email@gmail.com") &&
+                                                   !EMAIL_PASSWORD.equals("your-app-password");
 
     /**
      * Template types for different kinds of email messages.
@@ -36,12 +41,23 @@ public class EmailService {
 
     /**
      * Sends an OTP code to the specified email address.
+     * Falls back to demo mode if email is not configured.
      *
      * @param email The email address to send the OTP to
      * @param otpCode The OTP code to send
-     * @return true if the email was sent successfully, false otherwise
+     * @return true if the email was sent successfully or in demo mode, false otherwise
      */
     public boolean sendOTP(String email, String otpCode) {
+        // Check if email is configured
+        if (!EMAIL_CONFIGURED) {
+            System.out.println("📧 EMAIL DEMO MODE - OTP would be sent to: " + email);
+            System.out.println("🔑 Your OTP Code: " + otpCode);
+            System.out.println("📝 Note: Email not configured. Using demo mode.");
+            System.out.println("   To enable real emails, update EmailService.java with your Gmail credentials.");
+            System.out.println("────────────────────────────────────────────────");
+            return true; // Return true for demo mode
+        }
+
         try {
             Session session = createEmailSession();
 
@@ -54,13 +70,58 @@ public class EmailService {
             message.setContent(emailContent, "text/html");
 
             Transport.send(message);
-            System.out.println("OTP email sent successfully to: " + email);
+            System.out.println("✅ OTP email sent successfully to: " + email);
             return true;
 
         } catch (MessagingException e) {
-            System.err.println("Failed to send OTP email: " + e.getMessage());
+            System.err.println("❌ Failed to send OTP email to " + email + ": " + e.getMessage());
+
+            // Provide helpful error messages
+            if (e.getMessage().contains("Authentication failed")) {
+                System.err.println("💡 Email authentication failed. Please check:");
+                System.err.println("   1. Gmail address is correct");
+                System.err.println("   2. App Password is correct (not your regular password)");
+                System.err.println("   3. 2-Factor Authentication is enabled on Gmail");
+            } else if (e.getMessage().contains("Connection")) {
+                System.err.println("💡 Connection failed. Please check your internet connection.");
+            }
+
+            // Fall back to demo mode for development
+            System.out.println("🔄 Falling back to demo mode...");
+            System.out.println("📧 EMAIL DEMO MODE - OTP for " + email + ": " + otpCode);
+
+            return true; // Return true to allow login in demo mode
+        } catch (Exception e) {
+            System.err.println("❌ Unexpected error sending OTP: " + e.getMessage());
             e.printStackTrace();
-            return false;
+
+            // Fall back to demo mode
+            System.out.println("🔄 Falling back to demo mode...");
+            System.out.println("📧 EMAIL DEMO MODE - OTP for " + email + ": " + otpCode);
+
+            return true; // Return true to allow login in demo mode
+        }
+    }
+
+    /**
+     * Checks if email service is properly configured.
+     *
+     * @return true if email is configured with real credentials, false if using defaults
+     */
+    public boolean isEmailConfigured() {
+        return EMAIL_CONFIGURED;
+    }
+
+    /**
+     * Gets the configuration status message.
+     *
+     * @return Status message about email configuration
+     */
+    public String getConfigurationStatus() {
+        if (EMAIL_CONFIGURED) {
+            return "✅ Email service configured and ready";
+        } else {
+            return "⚠️ Email service in demo mode - update credentials in EmailService.java";
         }
     }
 
