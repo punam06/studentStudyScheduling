@@ -9,10 +9,13 @@ import java.util.Base64;
  * Represents a user account with authentication details.
  */
 public class UserAccount {
+    private int id;
     private String username;
+    private String email;
     private String passwordHash;
     private String salt;
     private UserRole role;
+    private boolean isEmailVerified;
 
     /**
      * Enum representing possible user roles.
@@ -36,6 +39,7 @@ public class UserAccount {
         this.salt = generateSalt();
         this.passwordHash = hashPassword(password, salt);
         this.role = role;
+        this.isEmailVerified = false;
     }
 
     /**
@@ -52,6 +56,27 @@ public class UserAccount {
         this.passwordHash = passwordHash;
         this.salt = salt;
         this.role = role;
+        this.isEmailVerified = false;
+    }
+
+    /**
+     * Creates a user account with database information.
+     *
+     * @param username The username
+     * @param email The email address
+     * @param passwordHash The already hashed password
+     * @param salt The salt used for hashing
+     * @param role The user's role
+     * @param id The database ID
+     */
+    public UserAccount(String username, String email, String passwordHash, String salt, UserRole role, int id) {
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.salt = salt;
+        this.role = role;
+        this.isEmailVerified = false;
     }
 
     /**
@@ -141,13 +166,23 @@ public class UserAccount {
     }
 
     /**
+     * Sets the password hash for this account.
+     *
+     * @param passwordHash The new password hash
+     */
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    /**
      * Hashes a password with the provided salt using SHA-256.
+     * Made public for password recovery functionality.
      *
      * @param password The plain text password to hash
      * @param salt The salt to use
      * @return The Base64 encoded hash
      */
-    private String hashPassword(String password, String salt) {
+    public String hashPassword(String password, String salt) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             md.update(Base64.getDecoder().decode(salt));
@@ -156,5 +191,50 @@ public class UserAccount {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Failed to hash password", e);
         }
+    }
+
+    /**
+     * Gets the database ID for this account.
+     *
+     * @return The database ID
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * Gets the email address for this account.
+     *
+     * @return The email address
+     */
+    public String getEmail() {
+        return email;
+    }
+
+    /**
+     * Sets the email address for this account.
+     *
+     * @param email The email address
+     */
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    /**
+     * Gets the email verification status.
+     *
+     * @return true if email is verified, false otherwise
+     */
+    public boolean isEmailVerified() {
+        return isEmailVerified;
+    }
+
+    /**
+     * Sets the email verification status.
+     *
+     * @param emailVerified The verification status
+     */
+    public void setEmailVerified(boolean emailVerified) {
+        isEmailVerified = emailVerified;
     }
 }

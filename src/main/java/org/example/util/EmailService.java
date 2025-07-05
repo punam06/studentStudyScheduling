@@ -3,15 +3,26 @@ package org.example.util;
 import org.example.model.Member;
 import org.example.model.TimeSlot;
 
+import javax.mail.*;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Properties;
 
 /**
- * A simulated email service for sending meeting notifications.
+ * Email service for sending meeting notifications and OTP codes.
  */
 public class EmailService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
+
+    // Email configuration - update these with your email settings
+    private static final String SMTP_HOST = "smtp.gmail.com";
+    private static final String SMTP_PORT = "587";
+    private static final String EMAIL_USERNAME = "your-email@gmail.com"; // Replace with your email
+    private static final String EMAIL_PASSWORD = "your-app-password"; // Replace with your app password
+    private static final String FROM_EMAIL = "your-email@gmail.com"; // Replace with your email
 
     /**
      * Template types for different kinds of email messages.
@@ -19,7 +30,88 @@ public class EmailService {
     public enum TemplateType {
         MEETING_INVITATION,
         SCHEDULE_UPDATE,
-        REMINDER
+        REMINDER,
+        OTP_VERIFICATION
+    }
+
+    /**
+     * Sends an OTP code to the specified email address.
+     *
+     * @param email The email address to send the OTP to
+     * @param otpCode The OTP code to send
+     * @return true if the email was sent successfully, false otherwise
+     */
+    public boolean sendOTP(String email, String otpCode) {
+        try {
+            Session session = createEmailSession();
+
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(FROM_EMAIL));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email));
+            message.setSubject("Your OTP Code - Student Scheduling System");
+
+            String emailContent = generateOTPEmail(otpCode);
+            message.setContent(emailContent, "text/html");
+
+            Transport.send(message);
+            System.out.println("OTP email sent successfully to: " + email);
+            return true;
+
+        } catch (MessagingException e) {
+            System.err.println("Failed to send OTP email: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Creates an email session with SMTP configuration.
+     *
+     * @return Configured email session
+     */
+    private Session createEmailSession() {
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", SMTP_HOST);
+        props.put("mail.smtp.port", SMTP_PORT);
+        props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+
+        return Session.getInstance(props, new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(EMAIL_USERNAME, EMAIL_PASSWORD);
+            }
+        });
+    }
+
+    /**
+     * Generates HTML content for OTP email.
+     *
+     * @param otpCode The OTP code to include in the email
+     * @return HTML email content
+     */
+    private String generateOTPEmail(String otpCode) {
+        return "<html>" +
+            "<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">" +
+                "<div style=\"background-color: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center;\">" +
+                    "<h2 style=\"color: #333; margin-bottom: 20px;\">Student Scheduling System</h2>" +
+                    "<h3 style=\"color: #007bff; margin-bottom: 30px;\">Your OTP Code</h3>" +
+
+                    "<div style=\"background-color: #007bff; color: white; padding: 20px; border-radius: 8px; margin: 20px 0;\">" +
+                        "<h1 style=\"font-size: 36px; margin: 0; letter-spacing: 5px;\">" + otpCode + "</h1>" +
+                    "</div>" +
+
+                    "<p style=\"color: #666; font-size: 16px; margin: 20px 0;\">" +
+                        "This OTP code will expire in 10 minutes. Please do not share this code with anyone." +
+                    "</p>" +
+
+                    "<p style=\"color: #999; font-size: 14px; margin-top: 30px;\">" +
+                        "If you didn't request this code, please ignore this email." +
+                    "</p>" +
+                "</div>" +
+            "</body>" +
+            "</html>";
     }
 
     /**

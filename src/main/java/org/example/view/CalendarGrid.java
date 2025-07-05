@@ -299,6 +299,55 @@ public class CalendarGrid extends JPanel {
         repaint();
     }
 
+    /**
+     * Adds a time slot to the calendar grid and marks it as scheduled.
+     *
+     * @param timeSlot The time slot to add
+     */
+    public void addTimeSlot(TimeSlot timeSlot) {
+        // Convert the time slot to grid coordinates and mark as scheduled
+        LocalTime slotStart = timeSlot.getStartTime().toLocalTime();
+        LocalTime slotEnd = timeSlot.getEndTime().toLocalTime();
+
+        // Calculate which time columns this slot spans
+        int startColumn = getTimeColumnForTime(slotStart);
+        int endColumn = getTimeColumnForTime(slotEnd);
+
+        // Mark all affected cells as scheduled/selected
+        for (int member = 0; member < members.size(); member++) {
+            for (int timeCol = startColumn; timeCol < endColumn; timeCol++) {
+                Point cell = new Point(member, timeCol);
+                if (isValidCell(cell)) {
+                    setCellState(cell, CellState.SELECTED);
+                }
+            }
+        }
+
+        repaint();
+    }
+
+    /**
+     * Gets the time column index for a given time.
+     *
+     * @param time The time to find the column for
+     * @return The column index, or -1 if not found
+     */
+    private int getTimeColumnForTime(LocalTime time) {
+        LocalTime currentTime = startTime;
+        int column = 0;
+
+        while (currentTime.isBefore(endTime)) {
+            if (currentTime.equals(time) ||
+                    (currentTime.isBefore(time) && currentTime.plusMinutes(timeSlotInterval).isAfter(time))) {
+                return column;
+            }
+            currentTime = currentTime.plusMinutes(timeSlotInterval);
+            column++;
+        }
+
+        return -1;
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);

@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public class StudyGroup {
     private String name;
     private List<Member> members;
+    private List<TimeSlot> timeSlots;  // Add this field
     private LocalTime defaultStartTime;
     private LocalTime defaultEndTime;
     private int minimumMembersRequired;
@@ -25,6 +26,7 @@ public class StudyGroup {
     public StudyGroup(String name) {
         this.name = name;
         this.members = new ArrayList<>();
+        this.timeSlots = new ArrayList<>();  // Initialize timeSlots list
         this.defaultStartTime = LocalTime.of(8, 0); // 8:00 AM
         this.defaultEndTime = LocalTime.of(22, 0); // 10:00 PM
         this.minimumMembersRequired = 0; // Default: all members required
@@ -235,5 +237,37 @@ public class StudyGroup {
     private boolean isAvailableForSlot(Member member, TimeSlot timeSlot) {
         return member.getAvailableTimeSlots().stream()
                 .anyMatch(slot -> slot.overlaps(timeSlot));
+    }
+
+    /**
+     * Adds a time slot to the study group schedule.
+     *
+     * @param timeSlot The time slot to add
+     * @return true if the time slot was added successfully
+     */
+    public boolean addTimeSlot(TimeSlot timeSlot) {
+        if (!timeSlots.contains(timeSlot)) {
+            return timeSlots.add(timeSlot);
+        }
+        return false;
+    }
+
+    /**
+     * Removes a time slot from the study group schedule.
+     *
+     * @param timeSlot The time slot to remove
+     * @return true if the time slot was removed successfully
+     */
+    public boolean removeTimeSlot(TimeSlot timeSlot) {
+        return timeSlots.remove(timeSlot);
+    }
+
+    /**
+     * Gets all scheduled time slots for this study group.
+     *
+     * @return A list of scheduled time slots
+     */
+    public List<TimeSlot> getTimeSlots() {
+        return new ArrayList<>(timeSlots);
     }
 }

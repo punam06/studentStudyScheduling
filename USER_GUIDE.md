@@ -1,368 +1,596 @@
-# Study Squad Synchronizer
-## User Guide
-
-![Study Squad Synchronizer Logo](https://via.placeholder.com/150x150.png?text=SSS)
-
-*Version 1.0 - June 2025*
-
----
+# Student Scheduling System - User Guide
 
 ## Table of Contents
-1. [Introduction](#1-introduction)
-2. [Getting Started](#2-getting-started)
-   - [System Requirements](#21-system-requirements)
-   - [Installation](#22-installation)
-   - [First Launch](#23-first-launch)
-3. [Account Management](#3-account-management)
-   - [Default Accounts](#31-default-accounts)
-   - [Logging In](#32-logging-in)
-   - [Creating New Accounts](#33-creating-new-accounts)
-   - [Account Types and Permissions](#34-account-types-and-permissions)
-   - [Viewing Your Profile](#35-viewing-your-profile)
-   - [Logging Out](#36-logging-out)
-4. [Managing Members](#4-managing-members)
-   - [Adding Members](#41-adding-members)
-   - [Editing Members](#42-editing-members)
-   - [Removing Members](#43-removing-members)
-5. [Calendar and Scheduling](#5-calendar-and-scheduling)
-   - [Navigating the Calendar](#51-navigating-the-calendar)
-   - [Managing Time Slots](#52-managing-time-slots)
-   - [Finding Common Availability](#53-finding-common-availability)
-   - [Scheduling Meetings](#54-scheduling-meetings)
-   - [Emergency Scheduling](#55-emergency-scheduling)
-6. [Email Notifications](#6-email-notifications)
-   - [Sending Invitations](#61-sending-invitations)
-   - [Email Templates](#62-email-templates)
-   - [Previewing Emails](#63-previewing-emails)
-7. [Settings and Preferences](#7-settings-and-preferences)
-   - [Time Range Settings](#71-time-range-settings)
-   - [Minimum Member Requirements](#72-minimum-member-requirements)
-8. [Troubleshooting](#8-troubleshooting)
-   - [Common Issues](#81-common-issues)
-   - [Technical Support](#82-technical-support)
-9. [FAQ](#9-faq)
+1. [Getting Started](#getting-started)
+2. [System Requirements](#system-requirements)
+3. [Installation Guide](#installation-guide)
+4. [User Authentication](#user-authentication)
+5. [Main Interface](#main-interface)
+6. [Study Group Management](#study-group-management)
+7. [Scheduling Features](#scheduling-features)
+8. [Email Notifications](#email-notifications)
+9. [Role-Based Features](#role-based-features)
+10. [Troubleshooting](#troubleshooting)
+11. [FAQ](#faq)
 
 ---
 
-## 1. Introduction
+## Getting Started
 
-Study Squad Synchronizer is a comprehensive tool designed to help study groups coordinate their schedules and find common meeting times. The application provides an intuitive interface for managing group members, visualizing availability on a calendar grid, finding overlapping free time slots, and scheduling meetings with automatic notifications.
+### Welcome to Student Scheduling System
+This application helps study groups coordinate meeting times efficiently. The system supports multiple user roles, secure authentication, and automatic email notifications.
 
-**Key Features:**
-- User account management with different permission levels
-- Member management system
-- Visual calendar grid for time slot selection
-- Automated common time slot detection
-- Meeting scheduling with email notifications
-- Emergency scheduling options for urgent sessions
-
-This guide will walk you through all aspects of using the Study Squad Synchronizer to help your study group collaborate more effectively.
+### Key Benefits
+- **Secure Access**: Two-factor authentication with email verification
+- **Smart Scheduling**: Automatically find common available time slots
+- **Role Management**: Different access levels for admins, students, and regular users
+- **Email Integration**: Automatic meeting invitations and reminders
+- **Persistent Storage**: MySQL database ensures data is never lost
 
 ---
 
-## 2. Getting Started
+## System Requirements
 
-### 2.1 System Requirements
+### Minimum Requirements
+- **Operating System**: Windows 10, macOS 10.14, or Linux Ubuntu 18.04+
+- **Java Runtime**: Java 17 or higher
+- **Memory**: 512 MB RAM minimum, 1 GB recommended
+- **Storage**: 100 MB free disk space
+- **Database**: MySQL 8.0 or MariaDB 10.5+
+- **Internet**: Required for email functionality
 
-To run Study Squad Synchronizer, your system must meet the following requirements:
-
-- **Operating System**: Windows 10/11, macOS 10.15+, or Linux
-- **Java**: Java Runtime Environment (JRE) 11 or newer
-- **Memory**: Minimum 4GB RAM
-- **Disk Space**: At least 100MB free space
+### Recommended Setup
+- **Java**: OpenJDK 17 or Oracle JDK 17+
+- **Database**: MySQL 8.0 with InnoDB engine
+- **Email**: Gmail account with App Password enabled
 - **Screen Resolution**: 1024x768 or higher
 
-### 2.2 Installation
+---
 
-1. **Download** the Study Squad Synchronizer application package from the provided source.
-2. **Extract** the downloaded file to your preferred location.
-3. **Run** the application:
-   - **Windows**: Double-click the `student_scheduling.bat` file
-   - **macOS/Linux**: Open Terminal, navigate to the extracted directory, and run `./student_scheduling`
+## Installation Guide
 
-### 2.3 First Launch
+### Step 1: Database Setup
 
-1. Upon first launch, you will see a splash screen displaying the application name and version.
-2. After a few seconds, the login screen will appear.
-3. Use one of the default accounts to log in (see [Default Accounts](#31-default-accounts)).
-4. After successful login, the main application window will open.
+1. **Install MySQL Server**
+   ```bash
+   # Ubuntu/Debian
+   sudo apt update
+   sudo apt install mysql-server
+   
+   # macOS (using Homebrew)
+   brew install mysql
+   
+   # Windows: Download MySQL installer from mysql.com
+   ```
+
+2. **Create Database**
+   ```bash
+   mysql -u root -p
+   ```
+   ```sql
+   CREATE DATABASE student_scheduling;
+   exit;
+   ```
+
+3. **Run Setup Script**
+   ```bash
+   mysql -u root -p student_scheduling < database_setup.sql
+   ```
+
+### Step 2: Email Configuration
+
+1. **Gmail Setup** (Recommended)
+   - Enable 2-Factor Authentication on your Gmail account
+   - Go to Google Account → Security → 2-Step Verification → App passwords
+   - Generate a new App Password for "Mail"
+   - Save this password for configuration
+
+2. **Update Email Settings**
+   Edit `src/main/java/org/example/util/EmailService.java`:
+   ```java
+   private static final String EMAIL_USERNAME = "your-email@gmail.com";
+   private static final String EMAIL_PASSWORD = "your-16-character-app-password";
+   private static final String FROM_EMAIL = "your-email@gmail.com";
+   ```
+
+### Step 3: Database Configuration
+
+Edit `src/main/java/org/example/database/DatabaseConfig.java`:
+```java
+private static final String DB_URL = "jdbc:mysql://localhost:3306/student_scheduling";
+private static final String DB_USERNAME = "root";
+private static final String DB_PASSWORD = "your-mysql-password";
+```
+
+### Step 4: Build and Run
+
+```bash
+# Make gradlew executable (Linux/macOS)
+chmod +x gradlew
+
+# Build the application
+./gradlew build
+
+# Run the application
+./gradlew run
+```
 
 ---
 
-## 3. Account Management
+## User Authentication
 
-### 3.1 Default Accounts
+### First Time Setup
 
-The application comes with two pre-configured accounts:
+When you first run the application, default accounts are automatically created:
 
-- **Admin Account**:
-  - Username: `admin`
-  - Password: `admin123`
-  - Full access to all features
+| Username | Password | Role | Description |
+|----------|----------|------|-------------|
+| admin | admin123 | ADMIN | Full system access |
+| student | student123 | STUDENT | Limited access |
 
-- **Student Account**:
-  - Username: `student`
-  - Password: `student123`
-  - Limited access (cannot use emergency scheduling)
+**⚠️ Important**: Change these default passwords immediately in production!
 
-### 3.2 Logging In
+### Registration Process
 
-1. Enter your username and password in the corresponding fields.
-2. Click the "Login" button or press Enter.
-3. If successful, the main application window will open.
-4. If unsuccessful, an error message will display. Check your credentials and try again.
+1. **Click "Register" on login screen**
+2. **Fill out registration form**:
+   - Username: Choose a unique username
+   - Email: Valid email address for OTP delivery
+   - Password: Minimum 6 characters
+   - Confirm Password: Must match
+   - Role: Select Student or Regular User
 
-### 3.3 Creating New Accounts
+3. **Email Verification**:
+   - Check your email for OTP code
+   - Enter 6-digit code in verification dialog
+   - Code expires in 10 minutes
 
-1. From the login screen, click the "Register" button.
-2. Fill in the required information:
-   - Username (required)
-   - Password (required)
-   - Confirm password (must match password)
-   - Role: Select either "Student" or "Regular User"
-3. Click "OK" to create the account.
-4. A confirmation message will appear if registration was successful.
-5. You can now log in with your new account.
+4. **Account Activation**:
+   - Successfully verified accounts can now login
+   - Login requires OTP verification each time
 
-### 3.4 Account Types and Permissions
+### Login Process
 
-The application supports three user roles:
+1. **Enter Credentials**:
+   - Username and password
+   - Click "Login" or press Enter
 
-- **Administrator**:
-  - Full access to all features
-  - Can use emergency scheduling
-  - Can access all administrative functions
+2. **OTP Verification**:
+   - Check email for 6-digit OTP code
+   - Enter code in verification dialog
+   - Use "Resend OTP" if needed
+   - 10-minute expiration timer
 
-- **Student**:
-  - Basic scheduling functionality
-  - Cannot use emergency scheduling
-  - Limited administrative access
+3. **Access Granted**:
+   - Main application window opens
+   - Features available based on user role
 
-- **Regular User**:
-  - Similar to Student role
-  - Standard access to scheduling features
-  - No access to administrative functions
+### Security Features
 
-### 3.5 Viewing Your Profile
-
-1. After logging in, click on the "Account" menu.
-2. Select "View Profile" from the dropdown menu.
-3. A dialog will appear displaying your:
-   - Username
-   - Role
-   - Access level
-
-### 3.6 Logging Out
-
-1. Click on the "Account" menu.
-2. Select "Logout" from the dropdown menu.
-3. Confirm that you want to log out.
-4. You will be returned to the login screen.
+- **Password Hashing**: BCrypt with salt for secure storage
+- **OTP Expiry**: 10-minute timeout prevents replay attacks
+- **Email Masking**: Email addresses partially hidden in UI
+- **Session Management**: Automatic logout on application close
+- **Role-Based Access**: Features restricted by user permissions
 
 ---
 
-## 4. Managing Members
+## Main Interface
 
-### 4.1 Adding Members
+### Application Layout
 
-1. Navigate to the "Members" panel on the right side of the application.
-2. Click the "Add" button at the bottom of the panel.
-3. Enter the required information:
-   - Name (required)
-   - Email address (optional but recommended for notifications)
-4. Click "OK" to add the member.
-5. The new member will appear in the members list.
+The main window consists of several key areas:
 
-Alternatively:
-1. Click the "Edit" menu in the top menu bar.
-2. Select "Add Member" from the dropdown menu.
-3. Follow steps 3-5 above.
+1. **Menu Bar**: File, Edit, Schedule, Settings, Account, Help
+2. **Calendar Panel**: Interactive time grid showing availability
+3. **Member Panel**: List of study group members
+4. **Toolbar**: Quick access to common functions
+5. **Status Bar**: Shows current operation status
 
-### 4.2 Editing Members
+### Menu System
 
-1. In the "Members" panel, select the member you wish to edit.
-2. Click the "Edit" button at the bottom of the panel.
-3. Update the member's information as needed.
-4. Click "OK" to save your changes.
+#### File Menu
+- **New Schedule**: Clear current schedule and start fresh
+- **Open Schedule**: Load saved schedule (future feature)
+- **Save Schedule**: Save current schedule (future feature)
+- **Exit**: Close application
 
-### 4.3 Removing Members
+#### Edit Menu
+- **Add Member**: Add new member to study group
+- **Remove Member**: Remove selected member
+- **Find Common Slots**: Highlight available time slots
 
-1. In the "Members" panel, select the member you wish to remove.
-2. Click the "Remove" button at the bottom of the panel.
-3. Confirm that you want to remove this member.
-4. The member will be removed from the list and their time slots cleared.
+#### Schedule Menu
+- **Schedule Meeting**: Create new meeting
+- **Force Schedule Meeting**: Admin-only emergency scheduling
+- **Send Invitations**: Email meeting invitations
 
----
+#### Settings Menu
+- **Preferences**: Configure time ranges and minimum members
 
-## 5. Calendar and Scheduling
+#### Account Menu
+- **View Profile**: Display user information and access level
+- **Logout**: Sign out and return to login screen
 
-### 5.1 Navigating the Calendar
+### Calendar Grid
 
-The calendar grid shows days on the horizontal axis and members on the vertical axis:
+The calendar displays time slots in a grid format:
 
-- Use the "◀ Previous Day" and "Next Day ▶" buttons to navigate between days.
-- Click the "Today" button to return to the current date.
-- The current date is displayed at the top of the calendar.
+- **Time Axis**: Vertical axis shows hours (8 AM - 10 PM by default)
+- **Member Columns**: Each study group member has a column
+- **Color Coding**:
+  - Green: Available time slot
+  - Red: Unavailable/busy
+  - Blue: Common available slot (all members free)
+  - Yellow: Scheduled meeting
 
-### 5.2 Managing Time Slots
-
-To mark time slots as available or unavailable:
-
-1. **Left-click** on a cell to toggle between available (green) and unavailable (white).
-2. **Click and drag** to select multiple cells at once.
-3. **Right-click** on a cell to open a context menu with additional options.
-
-### 5.3 Finding Common Availability
-
-To find times when all members are available:
-
-1. Ensure all members have marked their availability on the calendar.
-2. Click the "Find Common Slots" button in the toolbar.
-3. Common time slots will be highlighted in bright green on the calendar grid.
-
-### 5.4 Scheduling Meetings
-
-To schedule a regular meeting:
-
-1. Click the "Schedule" menu.
-2. Select "Schedule Meeting" from the dropdown menu.
-3. Enter the meeting details:
-   - Time (hour and minute)
-   - Duration (in minutes)
-   - Subject
-   - Message (optional)
-4. Click "OK" to proceed.
-5. Review the meeting details in the confirmation dialog.
-6. Click "Yes" to schedule the meeting.
-7. Choose whether to send email invitations to members.
-
-### 5.5 Emergency Scheduling
-
-For administrators who need to schedule urgent meetings:
-
-1. Click the "Schedule" menu.
-2. Select "Force Schedule Meeting" from the dropdown menu.
-   - Note: This option is only available to administrators.
-3. In the dialog that appears:
-   - Select the meeting time and duration
-   - Choose a priority level (Low, Medium, High, Critical)
-   - Enter a subject and message
-4. Click "OK" to proceed.
-5. Review the emergency meeting details and confirm.
-6. Choose whether to send urgent email notifications to all members.
+### Navigation
+- **Previous Day**: ◀ button or keyboard shortcut
+- **Today**: Quick return to current date
+- **Next Day**: ▶ button
+- **Date Selection**: Click to jump to specific date
 
 ---
 
-## 6. Email Notifications
+## Study Group Management
 
-### 6.1 Sending Invitations
+### Adding Members
 
-To send email invitations for a meeting:
+1. **Click "Add" button** in member panel
+2. **Enter member details**:
+   - Name: Full name of member
+   - Email: Email address for notifications
+3. **Click OK** to save
+4. **Member appears** in list and calendar grid
 
-1. Click the "Schedule" menu.
-2. Select "Send Invitations" from the dropdown menu.
-3. Enter the meeting details:
-   - Date (year, month, day)
-   - Time (hour and minute)
-   - Duration (in minutes)
-   - Subject
-   - Message (optional)
-4. Click "OK" to proceed.
-5. Preview the email before sending (see [Previewing Emails](#63-previewing-emails)).
-6. Click "OK" to send the invitations to all members.
+### Editing Members
 
-### 6.2 Email Templates
+1. **Select member** from list
+2. **Click "Edit" button**
+3. **Modify details** as needed
+4. **Click OK** to save changes
 
-The application includes several email templates:
+### Removing Members
 
-- **Meeting Invitation**: Standard invitation for new meetings
-- **Schedule Update**: Notification about changes to an existing meeting
-- **Reminder**: Reminder about an upcoming meeting
+1. **Select member** from list
+2. **Click "Remove" button**
+3. **Confirm removal** in dialog
+4. **Member removed** from group and calendar
 
-### 6.3 Previewing Emails
+### Member Availability
 
-Before sending any email notification:
-
-1. The system will display a preview of the email as it will appear to recipients.
-2. Review the content for accuracy and completeness.
-3. Click "OK" to send or "Cancel" to make changes.
+Members can indicate their availability by:
+- Clicking on time slots in their column
+- Green = Available, Red = Busy
+- Availability persists across sessions
 
 ---
 
-## 7. Settings and Preferences
+## Scheduling Features
 
-### 7.1 Time Range Settings
+### Finding Common Time Slots
 
-To change the default time range displayed in the calendar:
+1. **Add all group members** first
+2. **Set member availability** by clicking time slots
+3. **Click "Find Common Slots"** button
+4. **Blue highlighting** shows times when all members are free
 
-1. Click the "Settings" menu.
-2. Select "Preferences" from the dropdown menu.
-3. Adjust the start and end times (in hours).
-4. Click "OK" to apply the changes.
+### Scheduling Regular Meetings
 
-### 7.2 Minimum Member Requirements
+1. **Menu: Schedule → Schedule Meeting**
+2. **Select time details**:
+   - Hour: 0-23 (24-hour format)
+   - Minute: 0, 5, 10, ... 55
+   - Duration: 15-240 minutes
+3. **Enter meeting details**:
+   - Subject: Meeting topic
+   - Message: Additional information
+4. **Click OK** to schedule
+5. **Choose to send invitations** immediately
 
-To set the minimum number of members required for scheduling:
+### Force Scheduling (Admin Only)
 
-1. Click the "Settings" menu.
-2. Select "Preferences" from the dropdown menu.
-3. Adjust the "Minimum Members" value:
-   - 0: All members are required
-   - 1 or higher: The specified number of members are required
-4. Click "OK" to apply the changes.
+For emergency or high-priority meetings:
 
----
+1. **Menu: Schedule → Force Schedule Meeting**
+2. **Select priority level**:
+   - High: Important meeting
+   - Critical: Emergency session
+   - Urgent: Must attend
+3. **Override availability conflicts**
+4. **Automatic notification** to all members
 
-## 8. Troubleshooting
+### Meeting Preferences
 
-### 8.1 Common Issues
+Configure default settings via **Settings → Preferences**:
 
-**Login Issues**
-- Ensure you're using the correct username and password.
-- Check that caps lock is not enabled.
-- If you've forgotten your password, contact your administrator.
-
-**Calendar Not Displaying Correctly**
-- Ensure the application window is properly sized.
-- Try adjusting the time range in Preferences.
-- Restart the application if the issue persists.
-
-**Email Notifications Not Working**
-- Check that all members have valid email addresses.
-- Verify your internet connection.
-- Note that this is a simulated email service for demonstration purposes.
-
-### 8.2 Technical Support
-
-For technical support:
-- Contact your system administrator
-- Submit issues to the support portal at [support@studysquad.example.com](mailto:support@studysquad.example.com)
-- Check for updates at our website: [www.studysquad.example.com](http://www.studysquad.example.com)
+- **Start Time**: Default earliest meeting time
+- **End Time**: Default latest meeting time
+- **Minimum Members**: Required attendees (0 = all required)
 
 ---
 
-## 9. FAQ
+## Email Notifications
 
-**Q: Can I use the application without creating an account?**
-A: No, you must log in with a valid account. You can use the default accounts or register a new one.
+### Email Templates
+
+The system provides professional email templates:
+
+1. **Meeting Invitation**: Standard meeting request
+2. **Schedule Update**: Changes to existing meetings
+3. **Reminder**: Upcoming meeting notification
+4. **OTP Verification**: Authentication codes
+
+### Invitation Process
+
+1. **Schedule or select meeting**
+2. **Menu: Schedule → Send Invitations**
+3. **Configure details**:
+   - Date and time
+   - Duration
+   - Subject and message
+4. **Preview email** before sending
+5. **Confirm to send** to all members
+
+### Email Content
+
+Each invitation includes:
+- Meeting subject and description
+- Date and time details
+- Location or meeting link (if specified)
+- RSVP instructions
+- Professional formatting
+
+### Troubleshooting Email Issues
+
+If emails aren't sending:
+1. **Check email configuration** in EmailService.java
+2. **Verify Gmail App Password** is correct
+3. **Test internet connection**
+4. **Check spam folder** for delivered emails
+5. **Review console output** for error messages
+
+---
+
+## Role-Based Features
+
+### Administrator Features
+
+Administrators have full access to:
+- **Force Schedule Meetings**: Override member availability
+- **System Configuration**: Modify application settings
+- **User Management**: View all user accounts
+- **Emergency Scheduling**: High-priority meeting creation
+- **Advanced Preferences**: System-wide configuration
+
+### Student Features
+
+Students have access to:
+- **Group Participation**: Join and participate in study groups
+- **Meeting Scheduling**: Create meetings (with availability)
+- **Email Notifications**: Receive and send invitations
+- **Basic Preferences**: Personal settings
+- **Availability Management**: Set personal schedule
+
+### Regular User Features
+
+Regular users can:
+- **Standard Scheduling**: Full scheduling capabilities
+- **Group Coordination**: Organize study sessions
+- **Email Integration**: Send and receive notifications
+- **Member Management**: Add and manage group members
+
+### Feature Restrictions
+
+| Feature | Admin | Student | Regular User |
+|---------|-------|---------|--------------|
+| Force Schedule | ✅ | ❌ | ❌ |
+| Regular Schedule | ✅ | ✅ | ✅ |
+| Add Members | ✅ | ✅ | ✅ |
+| Email Invitations | ✅ | ✅ | ✅ |
+| System Preferences | ✅ | ❌ | ❌ |
+| Emergency Meetings | ✅ | ❌ | ❌ |
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### Application Won't Start
+
+**Problem**: Application fails to launch
+**Solutions**:
+1. **Check Java version**: `java -version` (need 17+)
+2. **Verify database connection**: Ensure MySQL is running
+3. **Check dependencies**: Run `./gradlew build` first
+4. **Review logs**: Check console output for errors
+
+#### Database Connection Failed
+
+**Problem**: "Cannot connect to database" error
+**Solutions**:
+1. **Start MySQL service**:
+   ```bash
+   # Linux
+   sudo systemctl start mysql
+   
+   # macOS
+   brew services start mysql
+   
+   # Windows
+   net start mysql
+   ```
+2. **Check credentials** in DatabaseConfig.java
+3. **Verify database exists**: `SHOW DATABASES;` in MySQL
+4. **Test connection** with mysql command line
+
+#### Email Not Working
+
+**Problem**: OTP or invitations not sending
+**Solutions**:
+1. **Verify Gmail App Password**:
+   - Must be 16-character app-specific password
+   - Not your regular Gmail password
+2. **Check email configuration**:
+   - Correct username and password in EmailService.java
+   - SMTP settings for your email provider
+3. **Network connectivity**: Test internet connection
+4. **Firewall settings**: Ensure port 587 is open
+
+#### OTP Not Received
+
+**Problem**: Verification code doesn't arrive
+**Solutions**:
+1. **Check spam folder**: Gmail may filter automated emails
+2. **Wait a few minutes**: Email delivery can be delayed
+3. **Verify email address**: Ensure correct email in account
+4. **Use "Resend OTP"**: Get a new code
+5. **Check console**: Look for email sending errors
+
+#### Login Issues
+
+**Problem**: Cannot log in with correct credentials
+**Solutions**:
+1. **Check username/password**: Verify exact spelling
+2. **Account verification**: Ensure email is verified
+3. **Database check**: Verify user exists in users table
+4. **Clear expired OTPs**: Run cleanup in database
+5. **Reset password**: Contact administrator for reset
+
+### Error Messages
+
+#### "User not found"
+- Username doesn't exist in database
+- Check spelling or register new account
+
+#### "Invalid password"
+- Password doesn't match stored hash
+- Verify password or use reset function
+
+#### "OTP expired"
+- Verification code older than 10 minutes
+- Request new OTP code
+
+#### "Email already exists"
+- Email address already registered
+- Use different email or recover existing account
+
+#### "Database connection timeout"
+- MySQL server not responding
+- Check server status and network connection
+
+### Performance Issues
+
+#### Slow Application Startup
+1. **Database optimization**: Add indexes if missing
+2. **Connection pool**: Verify HikariCP configuration
+3. **Memory allocation**: Increase JVM heap size
+4. **Network latency**: Check database server response time
+
+#### UI Responsiveness
+1. **Background operations**: Email sending in separate thread
+2. **Large member lists**: Consider pagination for 100+ members
+3. **Calendar rendering**: Optimize time slot calculations
+4. **Memory usage**: Monitor with Java profiling tools
+
+---
+
+## FAQ
+
+### General Questions
+
+**Q: Can I use this offline?**
+A: Partial functionality works offline, but email features and initial database setup require internet connection.
 
 **Q: How many members can I add to a study group?**
-A: The application supports an unlimited number of members, but for practical purposes and better visualization, we recommend keeping the group size under 20 members.
+A: There's no hard limit, but performance may decrease with 50+ members.
 
-**Q: Can I export the schedule to other calendar applications?**
-A: This feature is planned for future versions but is not currently available.
+**Q: Can I change my username after registration?**
+A: Currently not supported through UI. Contact administrator for database changes.
 
-**Q: Is my data saved when I close the application?**
-A: Yes, user account data is saved between sessions. Schedule and member information is also persisted.
+**Q: What happens if I forget my password?**
+A: Password reset feature is not implemented. Contact administrator for manual reset.
 
-**Q: What's the difference between regular scheduling and force scheduling?**
-A: Regular scheduling looks for time slots where all required members are available. Force scheduling allows administrators to schedule meetings even when some members have conflicts.
+### Technical Questions
 
-**Q: Can I customize the email templates?**
-A: The current version uses fixed templates with customizable subject and message fields. Full template customization will be available in future versions.
+**Q: Can I use a different database instead of MySQL?**
+A: Code uses MySQL-specific features. PostgreSQL adaptation would require code changes.
+
+**Q: Can I use Outlook instead of Gmail for emails?**
+A: Yes, update SMTP settings in EmailService.java:
+```java
+private static final String SMTP_HOST = "smtp-mail.outlook.com";
+private static final String SMTP_PORT = "587";
+```
+
+**Q: How do I backup my data?**
+A: Use MySQL dump:
+```bash
+mysqldump -u root -p student_scheduling > backup.sql
+```
+
+**Q: Can I run this on a server for multiple users?**
+A: Yes, but you'll need to configure proper database permissions and network access.
+
+### Security Questions
+
+**Q: How secure are the passwords?**
+A: Passwords are hashed using BCrypt with salt, industry-standard security.
+
+**Q: Can others see my email address?**
+A: Email addresses are partially masked in the UI for privacy.
+
+**Q: What data is stored in the database?**
+A: Usernames, hashed passwords, email addresses, group memberships, and meeting schedules.
+
+**Q: Can I delete my account?**
+A: Account deletion is not implemented in UI. Database records can be manually removed.
+
+### Usage Questions
+
+**Q: Can I be in multiple study groups?**
+A: Current version supports one active group per session. Multiple groups require separate application instances.
+
+**Q: How do I export my schedule?**
+A: Export functionality is planned for future versions. Currently, use database queries.
+
+**Q: Can I set recurring meetings?**
+A: Not currently supported. Each meeting must be scheduled individually.
+
+**Q: What's the maximum meeting duration?**
+A: UI allows up to 240 minutes (4 hours). Database has no limit.
 
 ---
 
-*Thank you for using Study Squad Synchronizer!*
+## Support and Contact
 
-© 2025 Your University. All rights reserved.
+### Getting Help
+
+1. **Check this user guide** for common solutions
+2. **Review troubleshooting section** for specific issues
+3. **Check application logs** for error messages
+4. **Consult README.md** for technical details
+
+### Reporting Issues
+
+When reporting problems, include:
+- **Error messages**: Exact text of any error dialogs
+- **Steps to reproduce**: What you were doing when problem occurred
+- **System information**: OS, Java version, MySQL version
+- **Log output**: Console messages and stack traces
+
+### Feature Requests
+
+Future enhancements may include:
+- **Calendar export**: iCal/Google Calendar integration
+- **Mobile app**: Android/iOS companion
+- **Advanced scheduling**: Recurring meetings, time zones
+- **Enhanced notifications**: SMS, push notifications
+- **Multi-group support**: Participate in multiple groups
+
+---
+
+**Version**: 1.0.0  
+**Last Updated**: December 2024  
+**Support**: Educational use at Bangladesh University of Professionals

@@ -8,7 +8,7 @@ import java.awt.*;
 import java.awt.event.*;
 
 /**
- * Login form for user authentication.
+ * Login form for user authentication with OTP verification.
  */
 public class LoginView extends JFrame {
     private JTextField usernameField;
@@ -114,10 +114,12 @@ public class LoginView extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
         registerButton = new JButton("Register");
+        JButton forgotPasswordButton = new JButton("Forgot Password");
         loginButton = new JButton("Login");
         loginButton.setBackground(new Color(70, 130, 180));
         loginButton.setForeground(Color.WHITE);
 
+        buttonPanel.add(forgotPasswordButton);
         buttonPanel.add(registerButton);
         buttonPanel.add(loginButton);
 
@@ -130,6 +132,7 @@ public class LoginView extends JFrame {
         loginButton.addActionListener(e -> attemptLogin());
 
         registerButton.addActionListener(e -> showRegistrationDialog());
+        forgotPasswordButton.addActionListener(e -> showForgotPasswordDialog());
 
         // Allow login on Enter press
         getRootPane().setDefaultButton(loginButton);
@@ -139,9 +142,10 @@ public class LoginView extends JFrame {
 
     /**
      * Attempts to login with the credentials in the form.
+     * This will initiate the OTP verification process or direct login in fallback mode.
      */
     private void attemptLogin() {
-        String username = usernameField.getText();
+        String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
 
         if (username.isEmpty() || password.isEmpty()) {
@@ -149,26 +153,69 @@ public class LoginView extends JFrame {
             return;
         }
 
-        boolean success = authService.login(username, password);
+        // Clear status
+        statusLabel.setText(" ");
 
-        if (success) {
-            dispose(); // Close login window
+        // Disable login button to prevent multiple attempts
+        loginButton.setEnabled(false);
+        loginButton.setText("Logging in...");
 
-            if (onLoginSuccess != null) {
-                onLoginSuccess.run();
+        SwingUtilities.invokeLater(() -> {
+            boolean loginResult = authService.initiateLogin(username, password);
+
+            if (loginResult) {
+                // Check if we need OTP verification or if login is complete
+                if (authService.isLoggedIn()) {
+                    // Direct login successful (fallback mode or OTP skipped)
+                    statusLabel.setText("Login successful!");
+                    dispose(); // Close login window
+
+                    if (onLoginSuccess != null) {
+                        onLoginSuccess.run();
+                    }
+                } else if (authService.hasPendingVerification(username)) {
+                    // OTP verification needed
+                    String email = authService.getPendingVerificationEmail(username);
+
+                    if (email != null) {
+                        // Show OTP verification dialog
+                        OTPVerificationDialog otpDialog = new OTPVerificationDialog(
+                            this, authService, username, email);
+                        otpDialog.setVisible(true);
+
+                        // Check if login was successful after OTP verification
+                        if (otpDialog.isVerified() && authService.isLoggedIn()) {
+                            statusLabel.setText("Login successful!");
+                            dispose(); // Close login window
+
+                            if (onLoginSuccess != null) {
+                                onLoginSuccess.run();
+                            }
+                        } else {
+                            statusLabel.setText("Login cancelled or failed");
+                        }
+                    } else {
+                        statusLabel.setText("Email not found for user");
+                    }
+                }
+            } else {
+                statusLabel.setText("Invalid username or password");
+                passwordField.setText("");
             }
-        } else {
-            statusLabel.setText("Invalid username or password");
-            passwordField.setText("");
-        }
+
+            // Re-enable login button
+            loginButton.setEnabled(true);
+            loginButton.setText("Login");
+        });
     }
 
     /**
-     * Shows a dialog for registering a new user.
+     * Shows a dialog for registering a new user with email verification.
      */
     private void showRegistrationDialog() {
-        JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
+        JPanel panel = new JPanel(new GridLayout(5, 2, 5, 5));
         JTextField usernameField = new JTextField();
+        JTextField emailField = new JTextField();
         JPasswordField passwordField = new JPasswordField();
         JPasswordField confirmPasswordField = new JPasswordField();
 
@@ -178,6 +225,8 @@ public class LoginView extends JFrame {
 
         panel.add(new JLabel("Username:"));
         panel.add(usernameField);
+        panel.add(new JLabel("Email:"));
+        panel.add(emailField);
         panel.add(new JLabel("Password:"));
         panel.add(passwordField);
         panel.add(new JLabel("Confirm Password:"));
@@ -189,16 +238,25 @@ public class LoginView extends JFrame {
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (result == JOptionPane.OK_OPTION) {
-            String username = usernameField.getText();
+            String username = usernameField.getText().trim();
+            String email = emailField.getText().trim();
             String password = new String(passwordField.getPassword());
             String confirmPassword = new String(confirmPasswordField.getPassword());
             int selectedRole = roleComboBox.getSelectedIndex();
             UserAccount.UserRole role = selectedRole == 0 ?
                     UserAccount.UserRole.STUDENT : UserAccount.UserRole.USER;
 
-            if (username.isEmpty() || password.isEmpty()) {
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
-                        "Username and password cannot be empty",
+                        "Username, email, and password cannot be empty",
+                        "Registration Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                JOptionPane.showMessageDialog(this,
+                        "Please enter a valid email address",
                         "Registration Error",
                         JOptionPane.ERROR_MESSAGE);
                 return;
@@ -212,18 +270,112 @@ public class LoginView extends JFrame {
                 return;
             }
 
-            boolean success = authService.registerUser(username, password, role);
+            if (password.length() < 6) {
+                JOptionPane.showMessageDialog(this,
+                        "Password must be at least 6 characters long",
+                        "Registration Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Attempt to register the user
+            boolean success = authService.registerUser(username, email, password, role);
 
             if (success) {
-                String roleText = role == UserAccount.UserRole.STUDENT ? "student" : "user";
+                // Show OTP verification dialog for new registration
+                OTPVerificationDialog otpDialog = new OTPVerificationDialog(
+                    this, authService, username, email);
+                otpDialog.setVisible(true);
+
+                if (otpDialog.isVerified()) {
+                    JOptionPane.showMessageDialog(this,
+                            "Registration and email verification successful! You can now login.",
+                            "Registration Complete",
+                            JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+            // Error messages are already handled by the AuthenticationService
+        }
+    }
+
+    /**
+     * Validates an email address format.
+     *
+     * @param email The email to validate
+     * @return true if email format is valid, false otherwise
+     */
+    private boolean isValidEmail(String email) {
+        return email.contains("@") && email.contains(".") && email.length() > 5;
+    }
+
+    /**
+     * Shows a dialog for password recovery.
+     */
+    private void showForgotPasswordDialog() {
+        JPanel panel = new JPanel(new GridLayout(2, 2, 5, 5));
+        JTextField emailField = new JTextField();
+        JPasswordField newPasswordField = new JPasswordField();
+        JPasswordField confirmNewPasswordField = new JPasswordField();
+
+        panel.add(new JLabel("Email:"));
+        panel.add(emailField);
+        panel.add(new JLabel("New Password:"));
+        panel.add(newPasswordField);
+        panel.add(new JLabel("Confirm New Password:"));
+        panel.add(confirmNewPasswordField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Forgot Password",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String email = emailField.getText().trim();
+            String newPassword = new String(newPasswordField.getPassword());
+            String confirmNewPassword = new String(confirmNewPasswordField.getPassword());
+
+            if (email.isEmpty() || newPassword.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
-                        "New " + roleText + " registered successfully. You can now login.",
-                        "Registration Successful",
+                        "Email and new password cannot be empty",
+                        "Password Recovery Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                JOptionPane.showMessageDialog(this,
+                        "Please enter a valid email address",
+                        "Password Recovery Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!newPassword.equals(confirmNewPassword)) {
+                JOptionPane.showMessageDialog(this,
+                        "Passwords do not match",
+                        "Password Recovery Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (newPassword.length() < 6) {
+                JOptionPane.showMessageDialog(this,
+                        "Password must be at least 6 characters long",
+                        "Password Recovery Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Attempt to recover the password
+            boolean success = authService.recoverPassword(email, newPassword);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                        "Password reset successful! You can now login with the new password.",
+                        "Password Recovery Complete",
                         JOptionPane.INFORMATION_MESSAGE);
             } else {
                 JOptionPane.showMessageDialog(this,
-                        "Username already exists",
-                        "Registration Error",
+                        "Failed to reset password. Please check the email and try again.",
+                        "Password Recovery Error",
                         JOptionPane.ERROR_MESSAGE);
             }
         }

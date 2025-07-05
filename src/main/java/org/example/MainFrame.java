@@ -78,12 +78,12 @@ public class MainFrame extends JFrame {
         boolean isStudent = authService.isCurrentUserStudent();
 
         // Get current user information
-        String username = "Unknown";
         if (authService.isLoggedIn()) {
-            authService.getCurrentUser().ifPresent(user -> {
+            UserAccount user = authService.getCurrentUser();
+            if (user != null) {
                 setTitle("Study Squad Synchronizer - " + user.getUsername() +
                         " (" + user.getRole() + ")");
-            });
+            }
         }
 
         // Set permissions based on role
@@ -222,6 +222,11 @@ public class MainFrame extends JFrame {
 
         // Schedule menu (new menu)
         JMenu scheduleMenu = new JMenu("Schedule");
+        JMenuItem addScheduleItem = new JMenuItem("Add Schedule");
+        addScheduleItem.addActionListener(e -> showAddScheduleDialog());
+        scheduleMenu.add(addScheduleItem);
+
+        scheduleMenu.addSeparator();
         JMenuItem scheduleItem = new JMenuItem("Schedule Meeting");
         scheduleItem.addActionListener(e -> scheduleMeeting());
         scheduleMenu.add(scheduleItem);
@@ -545,7 +550,7 @@ public class MainFrame extends JFrame {
                 "Study Squad Synchronizer\n" +
                 "Version 1.0\n\n" +
                 "A tool to help study groups find common meeting times.\n" +
-                "© 2025 Your University",
+                "© 2025 Bangladesh University of Professionals",
                 "About Study Squad Synchronizer",
                 JOptionPane.INFORMATION_MESSAGE);
     }
@@ -875,30 +880,33 @@ public class MainFrame extends JFrame {
      * Shows the user profile dialog.
      */
     private void showUserProfile() {
-        authService.getCurrentUser().ifPresent(user -> {
-            JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
+        if (authService.isLoggedIn()) {
+            UserAccount user = authService.getCurrentUser();
+            if (user != null) {
+                JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
 
-            panel.add(new JLabel("Username:"));
-            panel.add(new JLabel(user.getUsername()));
+                panel.add(new JLabel("Username:"));
+                panel.add(new JLabel(user.getUsername()));
 
-            panel.add(new JLabel("Role:"));
-            panel.add(new JLabel(user.getRole().toString()));
+                panel.add(new JLabel("Role:"));
+                panel.add(new JLabel(user.getRole().toString()));
 
-            String accessLevel;
-            if (user.isAdmin()) {
-                accessLevel = "Full Access (Administrator)";
-            } else if (user.isStudent()) {
-                accessLevel = "Limited Access (Student)";
-            } else {
-                accessLevel = "Standard Access (Regular User)";
+                String accessLevel;
+                if (user.isAdmin()) {
+                    accessLevel = "Full Access (Administrator)";
+                } else if (user.isStudent()) {
+                    accessLevel = "Limited Access (Student)";
+                } else {
+                    accessLevel = "Standard Access (Regular User)";
+                }
+
+                panel.add(new JLabel("Access Level:"));
+                panel.add(new JLabel(accessLevel));
+
+                JOptionPane.showMessageDialog(this, panel,
+                        "User Profile", JOptionPane.INFORMATION_MESSAGE);
             }
-
-            panel.add(new JLabel("Access Level:"));
-            panel.add(new JLabel(accessLevel));
-
-            JOptionPane.showMessageDialog(this, panel,
-                    "User Profile", JOptionPane.INFORMATION_MESSAGE);
-        });
+        }
     }
 
     /**
@@ -925,6 +933,54 @@ public class MainFrame extends JFrame {
                 });
                 loginView.setVisible(true);
             });
+        }
+    }
+
+    private void showAddScheduleDialog() {
+        // Create a panel for schedule details
+        JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
+        JTextField dateField = new JTextField();
+        JTextField timeField = new JTextField();
+        JTextField durationField = new JTextField();
+
+        panel.add(new JLabel("Date (YYYY-MM-DD):"));
+        panel.add(dateField);
+        panel.add(new JLabel("Time (HH:MM):"));
+        panel.add(timeField);
+        panel.add(new JLabel("Duration (minutes):"));
+        panel.add(durationField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Add Schedule",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String dateText = dateField.getText().trim();
+            String timeText = timeField.getText().trim();
+            String durationText = durationField.getText().trim();
+
+            try {
+                // Parse date and time
+                LocalDate date = LocalDate.parse(dateText, DateTimeFormatter.ISO_LOCAL_DATE);
+                LocalTime time = LocalTime.parse(timeText, DateTimeFormatter.ISO_LOCAL_TIME);
+                int duration = Integer.parseInt(durationText);
+
+                // Create time slot
+                LocalDateTime startDateTime = LocalDateTime.of(date, time);
+                LocalDateTime endDateTime = startDateTime.plusMinutes(duration);
+                TimeSlot newSlot = new TimeSlot(startDateTime, endDateTime);
+
+                // Add to study group
+                studyGroup.addTimeSlot(newSlot);
+
+                // Update calendar grid
+                calendarGrid.addTimeSlot(newSlot);
+
+                statusBar.setMessage("Schedule added for " + date + " " + time);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        "Invalid date, time, or duration. Please check your input.",
+                        "Input Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 }
