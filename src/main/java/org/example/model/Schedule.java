@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Represents a schedule containing a collection of time slots.
+ * Represents a schedule containing a collection of time slots with conflict-free scheduling.
  */
 public class Schedule {
     private List<TimeSlot> timeSlots;
@@ -43,16 +43,69 @@ public class Schedule {
     }
 
     /**
-     * Adds a time slot to this schedule.
+     * Adds a time slot to this schedule if it doesn't conflict with existing slots.
      *
      * @param timeSlot The time slot to add
-     * @return true if the time slot was added, false otherwise
+     * @return true if the time slot was added successfully, false if there was a conflict
      */
     public boolean addTimeSlot(TimeSlot timeSlot) {
+        // Check for conflicts with existing time slots
+        if (hasConflict(timeSlot)) {
+            return false;
+        }
+
         if (!timeSlots.contains(timeSlot)) {
             return timeSlots.add(timeSlot);
         }
         return false;
+    }
+
+    /**
+     * Checks if a time slot conflicts with any existing time slots in the schedule.
+     *
+     * @param newTimeSlot The time slot to check for conflicts
+     * @return true if there is a conflict, false otherwise
+     */
+    public boolean hasConflict(TimeSlot newTimeSlot) {
+        for (TimeSlot existingSlot : timeSlots) {
+            if (existingSlot.overlaps(newTimeSlot)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Gets all conflicting time slots for a given time slot.
+     *
+     * @param timeSlot The time slot to check conflicts for
+     * @return A list of conflicting time slots
+     */
+    public List<TimeSlot> getConflictingSlots(TimeSlot timeSlot) {
+        List<TimeSlot> conflicts = new ArrayList<>();
+        for (TimeSlot existingSlot : timeSlots) {
+            if (existingSlot.overlaps(timeSlot)) {
+                conflicts.add(existingSlot);
+            }
+        }
+        return conflicts;
+    }
+
+    /**
+     * Attempts to add a time slot and returns information about conflicts.
+     *
+     * @param timeSlot The time slot to add
+     * @return A ScheduleResult containing success status and conflict information
+     */
+    public ScheduleResult addTimeSlotWithConflictInfo(TimeSlot timeSlot) {
+        List<TimeSlot> conflicts = getConflictingSlots(timeSlot);
+
+        if (conflicts.isEmpty()) {
+            boolean added = addTimeSlot(timeSlot);
+            return new ScheduleResult(added, new ArrayList<>());
+        } else {
+            return new ScheduleResult(false, conflicts);
+        }
     }
 
     /**
@@ -96,5 +149,30 @@ public class Schedule {
      */
     public void clearSchedule() {
         timeSlots.clear();
+    }
+
+    /**
+     * Result class for schedule operations that provides conflict information.
+     */
+    public static class ScheduleResult {
+        private final boolean success;
+        private final List<TimeSlot> conflicts;
+
+        public ScheduleResult(boolean success, List<TimeSlot> conflicts) {
+            this.success = success;
+            this.conflicts = conflicts;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public List<TimeSlot> getConflicts() {
+            return conflicts;
+        }
+
+        public boolean hasConflicts() {
+            return !conflicts.isEmpty();
+        }
     }
 }

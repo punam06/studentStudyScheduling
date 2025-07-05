@@ -1,30 +1,31 @@
-# Student Scheduling System - User Guide
+c# Student Scheduling System - User Guide
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
 2. [System Requirements](#system-requirements)
 3. [Installation Guide](#installation-guide)
 4. [User Authentication](#user-authentication)
-5. [Main Interface](#main-interface)
-6. [Study Group Management](#study-group-management)
-7. [Scheduling Features](#scheduling-features)
-8. [Email Notifications](#email-notifications)
-9. [Role-Based Features](#role-based-features)
-10. [Troubleshooting](#troubleshooting)
-11. [FAQ](#faq)
+5. [Account Registration](#account-registration)
+6. [Main Interface](#main-interface)
+7. [Conflict-Free Scheduling](#conflict-free-scheduling)
+8. [Study Group Management](#study-group-management)
+9. [Email Notifications](#email-notifications)
+10. [Role-Based Features](#role-based-features)
+11. [Troubleshooting](#troubleshooting)
+12. [FAQ](#faq)
 
 ---
 
 ## Getting Started
 
 ### Welcome to Student Scheduling System
-This application helps study groups coordinate meeting times efficiently. The system supports multiple user roles, secure authentication, and automatic email notifications.
+This application helps study groups coordinate meeting times efficiently with conflict-free scheduling. The system supports Admin and Student roles, mandatory OTP authentication, and automatic email notifications.
 
 ### Key Benefits
-- **Secure Access**: Two-factor authentication with email verification
-- **Smart Scheduling**: Automatically find common available time slots
-- **Role Management**: Different access levels for admins, students, and regular users
-- **Email Integration**: Automatic meeting invitations and reminders
+- **Enhanced Security**: Mandatory two-factor authentication with email verification for every login
+- **Conflict-Free Scheduling**: Automatic detection and prevention of overlapping time slots
+- **Role Management**: Separate registration and access for Students and Admins
+- **Email Integration**: Automatic meeting invitations, reminders, and OTP delivery
 - **Persistent Storage**: MySQL database ensures data is never lost
 
 ---
@@ -37,7 +38,7 @@ This application helps study groups coordinate meeting times efficiently. The sy
 - **Memory**: 512 MB RAM minimum, 1 GB recommended
 - **Storage**: 100 MB free disk space
 - **Database**: MySQL 8.0 or MariaDB 10.5+
-- **Internet**: Required for email functionality
+- **Internet**: Required for email functionality (mandatory for OTP)
 
 ### Recommended Setup
 - **Java**: OpenJDK 17 or Oracle JDK 17+
@@ -49,69 +50,25 @@ This application helps study groups coordinate meeting times efficiently. The sy
 
 ## Installation Guide
 
-### Step 1: Database Setup
+### Step 1: Download and Setup
+1. Clone or download the project files
+2. Ensure Java 17+ is installed
+3. Set up MySQL database using the provided `database_setup.sql` script
+4. Configure email settings in `EmailService.java`
 
-1. **Install MySQL Server**
-   ```bash
-   # Ubuntu/Debian
-   sudo apt update
-   sudo apt install mysql-server
-   
-   # macOS (using Homebrew)
-   brew install mysql
-   
-   # Windows: Download MySQL installer from mysql.com
-   ```
-
-2. **Create Database**
-   ```bash
-   mysql -u root -p
-   ```
-   ```sql
-   CREATE DATABASE student_scheduling;
-   exit;
-   ```
-
-3. **Run Setup Script**
-   ```bash
-   mysql -u root -p student_scheduling < database_setup.sql
-   ```
-
-### Step 2: Email Configuration
-
-1. **Gmail Setup** (Recommended)
-   - Enable 2-Factor Authentication on your Gmail account
-   - Go to Google Account → Security → 2-Step Verification → App passwords
-   - Generate a new App Password for "Mail"
-   - Save this password for configuration
-
-2. **Update Email Settings**
-   Edit `src/main/java/org/example/util/EmailService.java`:
-   ```java
-   private static final String EMAIL_USERNAME = "your-email@gmail.com";
-   private static final String EMAIL_PASSWORD = "your-16-character-app-password";
-   private static final String FROM_EMAIL = "your-email@gmail.com";
-   ```
-
-### Step 3: Database Configuration
-
-Edit `src/main/java/org/example/database/DatabaseConfig.java`:
-```java
-private static final String DB_URL = "jdbc:mysql://localhost:3306/student_scheduling";
-private static final String DB_USERNAME = "root";
-private static final String DB_PASSWORD = "your-mysql-password";
+### Step 2: Database Setup
+```bash
+mysql -u root -p < database_setup.sql
 ```
 
-### Step 4: Build and Run
+### Step 3: Email Configuration
+Edit the email settings in `src/main/java/org/example/util/EmailService.java`:
+- Set your Gmail address
+- Set your App Password (not your regular password)
 
+### Step 4: Run the Application
 ```bash
-# Make gradlew executable (Linux/macOS)
-chmod +x gradlew
-
-# Build the application
 ./gradlew build
-
-# Run the application
 ./gradlew run
 ```
 
@@ -119,277 +76,195 @@ chmod +x gradlew
 
 ## User Authentication
 
-### First Time Setup
-
-When you first run the application, default accounts are automatically created:
-
-| Username | Password | Role | Description |
-|----------|----------|------|-------------|
-| admin | admin123 | ADMIN | Full system access |
-| student | student123 | STUDENT | Limited access |
-
-**⚠️ Important**: Change these default passwords immediately in production!
-
-### Registration Process
-
-1. **Click "Register" on login screen**
-2. **Fill out registration form**:
-   - Username: Choose a unique username
-   - Email: Valid email address for OTP delivery
-   - Password: Minimum 6 characters
-   - Confirm Password: Must match
-   - Role: Select Student or Regular User
-
-3. **Email Verification**:
-   - Check your email for OTP code
-   - Enter 6-digit code in verification dialog
-   - Code expires in 10 minutes
-
-4. **Account Activation**:
-   - Successfully verified accounts can now login
-   - Login requires OTP verification each time
+### New Security Features
+The system now requires **mandatory OTP verification** for every login attempt. There are no bypass options - all users must verify their identity via email.
 
 ### Login Process
+1. **Enter Credentials**: Provide username and password
+2. **Credential Verification**: System validates your credentials
+3. **OTP Delivery**: 6-digit OTP automatically sent to your registered email
+4. **OTP Verification**: Enter the OTP within 10 minutes
+5. **Access Granted**: System grants access after successful verification
 
-1. **Enter Credentials**:
-   - Username and password
-   - Click "Login" or press Enter
+### Password Recovery (Enhanced)
+If you forget your password, you can easily reset it:
 
-2. **OTP Verification**:
-   - Check email for 6-digit OTP code
-   - Enter code in verification dialog
-   - Use "Resend OTP" if needed
-   - 10-minute expiration timer
+1. **Click "Forgot Password"** on the login screen
+2. **Enter Email Address**: Use the large, visible email field (25 characters wide)
+3. **Set New Password**: Create any password you want (no character limitations)
+4. **Confirm Password**: Re-enter your new password to confirm
+5. **Email Verification**: System sends OTP to verify your identity
+6. **Complete Reset**: Your password is updated after verification
 
-3. **Access Granted**:
-   - Main application window opens
-   - Features available based on user role
+**Enhanced Features**:
+- **Large Email Field**: 25-character wide field with clear borders and larger font
+- **No Password Restrictions**: Set passwords of any length - no minimum requirements
+- **Professional Interface**: Clean dialog with proper spacing and styling
+- **Auto-Focus**: Email field automatically selected when dialog opens
+- **Clear Guidance**: Helpful instructions throughout the process
+- **Progress Indication**: Shows "Resetting..." during password update
+- **Success Feedback**: Confirmation message and login form cleared after successful reset
 
-### Security Features
+### Important Notes
+- **Email Required**: All accounts must have valid email addresses
+- **OTP Mandatory**: Every login requires OTP verification
+- **Time Limit**: OTP expires after 10 minutes
+- **Resend Option**: You can request a new OTP if needed
 
-- **Password Hashing**: BCrypt with salt for secure storage
-- **OTP Expiry**: 10-minute timeout prevents replay attacks
-- **Email Masking**: Email addresses partially hidden in UI
-- **Session Management**: Automatic logout on application close
-- **Role-Based Access**: Features restricted by user permissions
+### Default Test Accounts
+For testing purposes (also require OTP):
+- **Admin**: username `admin`, password `admin123`, email `admin@example.com`
+- **Student**: username `student`, password `student123`, email `student@example.com`
+
+---
+
+## Account Registration
+
+### New Registration System
+The system now provides separate registration paths for Students and Admins, with no "Regular User" option.
+
+### Registration Process
+1. **Choose Account Type**: Select either Student or Admin
+2. **Enter Information**: 
+   - Username (must be unique)
+   - Email address (must be valid)
+   - Password (minimum 6 characters)
+   - Confirm password
+3. **Email Verification**: OTP sent to your email
+4. **Complete Registration**: Enter OTP to activate account
+
+### Account Types
+- **Student Account**: 
+  - Personal scheduling access
+  - Study group participation
+  - Basic scheduling features
+  
+- **Admin Account**:
+  - Full system access
+  - User management capabilities
+  - Force scheduling permissions
+  - Advanced administrative features
 
 ---
 
 ## Main Interface
 
-### Application Layout
+### Dashboard Overview
+After successful login, you'll see the main dashboard with:
+- Current user information and role
+- Quick access to scheduling features
+- Recent activity summary
+- Conflict notifications (if any)
 
-The main window consists of several key areas:
+### Navigation Menu
+- **Schedule**: View and manage your time slots
+- **Study Groups**: Create and join study groups
+- **Members**: Manage group members (role-dependent)
+- **Settings**: Account and system preferences
+- **Logout**: Secure logout with session cleanup
 
-1. **Menu Bar**: File, Edit, Schedule, Settings, Account, Help
-2. **Calendar Panel**: Interactive time grid showing availability
-3. **Member Panel**: List of study group members
-4. **Toolbar**: Quick access to common functions
-5. **Status Bar**: Shows current operation status
+---
 
-### Menu System
+## Conflict-Free Scheduling
 
-#### File Menu
-- **New Schedule**: Clear current schedule and start fresh
-- **Open Schedule**: Load saved schedule (future feature)
-- **Save Schedule**: Save current schedule (future feature)
-- **Exit**: Close application
+### New Scheduling Features
+The system now prevents all scheduling conflicts automatically using advanced conflict detection algorithms.
 
-#### Edit Menu
-- **Add Member**: Add new member to study group
-- **Remove Member**: Remove selected member
-- **Find Common Slots**: Highlight available time slots
+### How It Works
+1. **Automatic Detection**: System checks for overlaps when adding new time slots
+2. **Real-time Validation**: Immediate feedback on potential conflicts
+3. **Conflict Prevention**: New appointments blocked if they overlap existing ones
+4. **Detailed Reporting**: Shows exactly which appointments conflict
 
-#### Schedule Menu
-- **Schedule Meeting**: Create new meeting
-- **Force Schedule Meeting**: Admin-only emergency scheduling
-- **Send Invitations**: Email meeting invitations
+### Adding Time Slots
+1. Click "Add Time Slot" or "Schedule Meeting"
+2. Select date and time range
+3. System automatically checks for conflicts
+4. If conflicts exist:
+   - View detailed conflict information
+   - Choose different time slot
+   - Or resolve conflicts first
+5. If no conflicts, appointment is added successfully
 
-#### Settings Menu
-- **Preferences**: Configure time ranges and minimum members
+### Conflict Resolution
+When conflicts are detected:
+- **View Conflicts**: See all overlapping appointments
+- **Alternative Times**: System suggests conflict-free alternatives
+- **Modify Existing**: Edit conflicting appointments if needed
+- **Force Schedule**: Admin-only option for emergency meetings
 
-#### Account Menu
-- **View Profile**: Display user information and access level
-- **Logout**: Sign out and return to login screen
-
-### Calendar Grid
-
-The calendar displays time slots in a grid format:
-
-- **Time Axis**: Vertical axis shows hours (8 AM - 10 PM by default)
-- **Member Columns**: Each study group member has a column
-- **Color Coding**:
-  - Green: Available time slot
-  - Red: Unavailable/busy
-  - Blue: Common available slot (all members free)
-  - Yellow: Scheduled meeting
-
-### Navigation
-- **Previous Day**: ◀ button or keyboard shortcut
-- **Today**: Quick return to current date
-- **Next Day**: ▶ button
-- **Date Selection**: Click to jump to specific date
+### Benefits
+- **No Double-booking**: Prevents scheduling multiple appointments at the same time
+- **Clear Feedback**: Immediate notification of scheduling conflicts
+- **Smart Suggestions**: Alternative time slots when conflicts occur
+- **Data Integrity**: Maintains consistent and reliable schedules
 
 ---
 
 ## Study Group Management
 
-### Adding Members
+### Creating Study Groups
+1. Navigate to "Study Groups" section
+2. Click "Create New Group"
+3. Enter group name and description
+4. Set initial schedule preferences
+5. Add initial members (conflict-free scheduling applies)
 
-1. **Click "Add" button** in member panel
-2. **Enter member details**:
-   - Name: Full name of member
-   - Email: Email address for notifications
-3. **Click OK** to save
-4. **Member appears** in list and calendar grid
+### Managing Members
+- **Add Members**: Invite new participants
+- **Remove Members**: Remove inactive participants
+- **View Schedules**: See all member availability
+- **Conflict Checking**: Automatic conflict detection when adding members
 
-### Editing Members
-
-1. **Select member** from list
-2. **Click "Edit" button**
-3. **Modify details** as needed
-4. **Click OK** to save changes
-
-### Removing Members
-
-1. **Select member** from list
-2. **Click "Remove" button**
-3. **Confirm removal** in dialog
-4. **Member removed** from group and calendar
-
-### Member Availability
-
-Members can indicate their availability by:
-- Clicking on time slots in their column
-- Green = Available, Red = Busy
-- Availability persists across sessions
-
----
-
-## Scheduling Features
-
-### Finding Common Time Slots
-
-1. **Add all group members** first
-2. **Set member availability** by clicking time slots
-3. **Click "Find Common Slots"** button
-4. **Blue highlighting** shows times when all members are free
-
-### Scheduling Regular Meetings
-
-1. **Menu: Schedule → Schedule Meeting**
-2. **Select time details**:
-   - Hour: 0-23 (24-hour format)
-   - Minute: 0, 5, 10, ... 55
-   - Duration: 15-240 minutes
-3. **Enter meeting details**:
-   - Subject: Meeting topic
-   - Message: Additional information
-4. **Click OK** to schedule
-5. **Choose to send invitations** immediately
-
-### Force Scheduling (Admin Only)
-
-For emergency or high-priority meetings:
-
-1. **Menu: Schedule → Force Schedule Meeting**
-2. **Select priority level**:
-   - High: Important meeting
-   - Critical: Emergency session
-   - Urgent: Must attend
-3. **Override availability conflicts**
-4. **Automatic notification** to all members
-
-### Meeting Preferences
-
-Configure default settings via **Settings → Preferences**:
-
-- **Start Time**: Default earliest meeting time
-- **End Time**: Default latest meeting time
-- **Minimum Members**: Required attendees (0 = all required)
+### Finding Common Times
+The system automatically finds time slots that work for all group members:
+1. Analyzes all member schedules
+2. Identifies conflict-free time slots
+3. Suggests optimal meeting times
+4. Prevents scheduling conflicts
 
 ---
 
 ## Email Notifications
 
-### Email Templates
+### OTP Delivery
+- **Login OTP**: Sent for every login attempt
+- **Registration OTP**: Sent during account creation
+- **Resend Option**: Available if OTP not received
+- **Expiration**: OTP expires after 10 minutes
 
-The system provides professional email templates:
+### Meeting Notifications
+- **Meeting Invitations**: Sent to all participants
+- **Schedule Changes**: Notifications for any updates
+- **Conflict Alerts**: Warning emails for scheduling conflicts
+- **Reminders**: Advance meeting reminders
 
-1. **Meeting Invitation**: Standard meeting request
-2. **Schedule Update**: Changes to existing meetings
-3. **Reminder**: Upcoming meeting notification
-4. **OTP Verification**: Authentication codes
-
-### Invitation Process
-
-1. **Schedule or select meeting**
-2. **Menu: Schedule → Send Invitations**
-3. **Configure details**:
-   - Date and time
-   - Duration
-   - Subject and message
-4. **Preview email** before sending
-5. **Confirm to send** to all members
-
-### Email Content
-
-Each invitation includes:
-- Meeting subject and description
-- Date and time details
-- Location or meeting link (if specified)
-- RSVP instructions
-- Professional formatting
-
-### Troubleshooting Email Issues
-
-If emails aren't sending:
-1. **Check email configuration** in EmailService.java
-2. **Verify Gmail App Password** is correct
-3. **Test internet connection**
-4. **Check spam folder** for delivered emails
-5. **Review console output** for error messages
+### Email Requirements
+- **Valid Email**: All accounts must have working email addresses
+- **Gmail Recommended**: System optimized for Gmail SMTP
+- **App Password**: Required for security (not regular password)
 
 ---
 
 ## Role-Based Features
 
-### Administrator Features
+### Student Role Features
+- **Personal Scheduling**: Manage your own time slots
+- **Study Group Participation**: Join and participate in groups
+- **Conflict Prevention**: Automatic conflict detection
+- **Basic Notifications**: Email updates for your activities
 
-Administrators have full access to:
-- **Force Schedule Meetings**: Override member availability
-- **System Configuration**: Modify application settings
-- **User Management**: View all user accounts
-- **Emergency Scheduling**: High-priority meeting creation
-- **Advanced Preferences**: System-wide configuration
+### Admin Role Features
+- **All Student Features**: Full access to student functionality
+- **User Management**: Create and manage user accounts
+- **Force Scheduling**: Override conflicts for emergency meetings
+- **System Configuration**: Access to system settings
+- **Advanced Reporting**: Detailed system usage reports
 
-### Student Features
-
-Students have access to:
-- **Group Participation**: Join and participate in study groups
-- **Meeting Scheduling**: Create meetings (with availability)
-- **Email Notifications**: Receive and send invitations
-- **Basic Preferences**: Personal settings
-- **Availability Management**: Set personal schedule
-
-### Regular User Features
-
-Regular users can:
-- **Standard Scheduling**: Full scheduling capabilities
-- **Group Coordination**: Organize study sessions
-- **Email Integration**: Send and receive notifications
-- **Member Management**: Add and manage group members
-
-### Feature Restrictions
-
-| Feature | Admin | Student | Regular User |
-|---------|-------|---------|--------------|
-| Force Schedule | ✅ | ❌ | ❌ |
-| Regular Schedule | ✅ | ✅ | ✅ |
-| Add Members | ✅ | ✅ | ✅ |
-| Email Invitations | ✅ | ✅ | ✅ |
-| System Preferences | ✅ | ❌ | ❌ |
-| Emergency Meetings | ✅ | ❌ | ❌ |
+### Permission System
+- **Role-Based Access**: Different features based on user role
+- **Secure Operations**: Sensitive operations require admin privileges
+- **Audit Trail**: All administrative actions are logged
 
 ---
 
@@ -397,200 +272,89 @@ Regular users can:
 
 ### Common Issues
 
-#### Application Won't Start
+#### Login Problems
+- **Problem**: Not receiving OTP
+- **Solution**: Check spam folder, verify email address, try resend option
+- **Alternative**: Contact admin if email issues persist
 
-**Problem**: Application fails to launch
-**Solutions**:
-1. **Check Java version**: `java -version` (need 17+)
-2. **Verify database connection**: Ensure MySQL is running
-3. **Check dependencies**: Run `./gradlew build` first
-4. **Review logs**: Check console output for errors
+#### Scheduling Conflicts
+- **Problem**: Cannot schedule desired time
+- **Solution**: Check conflict report, choose alternative time, or resolve existing conflicts
+- **Note**: System prevents double-booking for data integrity
 
-#### Database Connection Failed
+#### Email Configuration
+- **Problem**: OTP emails not sending
+- **Solution**: Verify Gmail App Password, check internet connection, update email settings
 
-**Problem**: "Cannot connect to database" error
-**Solutions**:
-1. **Start MySQL service**:
-   ```bash
-   # Linux
-   sudo systemctl start mysql
-   
-   # macOS
-   brew services start mysql
-   
-   # Windows
-   net start mysql
-   ```
-2. **Check credentials** in DatabaseConfig.java
-3. **Verify database exists**: `SHOW DATABASES;` in MySQL
-4. **Test connection** with mysql command line
+#### Database Connection
+- **Problem**: Cannot connect to database
+- **Solution**: Verify MySQL is running, check connection settings, ensure database exists
 
-#### Email Not Working
-
-**Problem**: OTP or invitations not sending
-**Solutions**:
-1. **Verify Gmail App Password**:
-   - Must be 16-character app-specific password
-   - Not your regular Gmail password
-2. **Check email configuration**:
-   - Correct username and password in EmailService.java
-   - SMTP settings for your email provider
-3. **Network connectivity**: Test internet connection
-4. **Firewall settings**: Ensure port 587 is open
-
-#### OTP Not Received
-
-**Problem**: Verification code doesn't arrive
-**Solutions**:
-1. **Check spam folder**: Gmail may filter automated emails
-2. **Wait a few minutes**: Email delivery can be delayed
-3. **Verify email address**: Ensure correct email in account
-4. **Use "Resend OTP"**: Get a new code
-5. **Check console**: Look for email sending errors
-
-#### Login Issues
-
-**Problem**: Cannot log in with correct credentials
-**Solutions**:
-1. **Check username/password**: Verify exact spelling
-2. **Account verification**: Ensure email is verified
-3. **Database check**: Verify user exists in users table
-4. **Clear expired OTPs**: Run cleanup in database
-5. **Reset password**: Contact administrator for reset
-
-### Error Messages
-
-#### "User not found"
-- Username doesn't exist in database
-- Check spelling or register new account
-
-#### "Invalid password"
-- Password doesn't match stored hash
-- Verify password or use reset function
-
-#### "OTP expired"
-- Verification code older than 10 minutes
-- Request new OTP code
-
-#### "Email already exists"
-- Email address already registered
-- Use different email or recover existing account
-
-#### "Database connection timeout"
-- MySQL server not responding
-- Check server status and network connection
-
-### Performance Issues
-
-#### Slow Application Startup
-1. **Database optimization**: Add indexes if missing
-2. **Connection pool**: Verify HikariCP configuration
-3. **Memory allocation**: Increase JVM heap size
-4. **Network latency**: Check database server response time
-
-#### UI Responsiveness
-1. **Background operations**: Email sending in separate thread
-2. **Large member lists**: Consider pagination for 100+ members
-3. **Calendar rendering**: Optimize time slot calculations
-4. **Memory usage**: Monitor with Java profiling tools
+### Getting Help
+1. Check this user guide for solutions
+2. Review the FAQ section
+3. Contact system administrator
+4. Check application logs for error details
 
 ---
 
 ## FAQ
 
-### General Questions
+### Authentication Questions
 
-**Q: Can I use this offline?**
-A: Partial functionality works offline, but email features and initial database setup require internet connection.
+**Q: Why do I need OTP for every login?**
+A: Enhanced security requires OTP verification for every login to protect user accounts and data.
 
-**Q: How many members can I add to a study group?**
-A: There's no hard limit, but performance may decrease with 50+ members.
+**Q: Can I disable OTP verification?**
+A: No, OTP verification is mandatory and cannot be disabled for security reasons.
 
-**Q: Can I change my username after registration?**
-A: Currently not supported through UI. Contact administrator for database changes.
+**Q: What if I don't receive the OTP?**
+A: Check your spam folder, verify your email address, and use the resend option if needed.
 
-**Q: What happens if I forget my password?**
-A: Password reset feature is not implemented. Contact administrator for manual reset.
+### Scheduling Questions
+
+**Q: Why can't I schedule overlapping meetings?**
+A: The system prevents conflicts to ensure data integrity and avoid double-booking.
+
+**Q: How do I resolve scheduling conflicts?**
+A: View the conflict report, choose alternative times, or modify existing appointments.
+
+**Q: Can admins override scheduling conflicts?**
+A: Yes, admins have force scheduling capabilities for emergency situations.
+
+### Account Questions
+
+**Q: What's the difference between Student and Admin accounts?**
+A: Students have basic scheduling access, while Admins have full system management capabilities.
+
+**Q: Can I change my account type?**
+A: Contact an administrator to change your account type.
+
+**Q: What happened to Regular User accounts?**
+A: Regular User accounts have been removed. You now choose between Student and Admin accounts.
 
 ### Technical Questions
 
-**Q: Can I use a different database instead of MySQL?**
-A: Code uses MySQL-specific features. PostgreSQL adaptation would require code changes.
+**Q: What email providers are supported?**
+A: Gmail is recommended, but other SMTP providers can be configured.
 
-**Q: Can I use Outlook instead of Gmail for emails?**
-A: Yes, update SMTP settings in EmailService.java:
-```java
-private static final String SMTP_HOST = "smtp-mail.outlook.com";
-private static final String SMTP_PORT = "587";
-```
+**Q: Is my data secure?**
+A: Yes, passwords are encrypted, OTP provides additional security, and all data is stored securely.
 
-**Q: How do I backup my data?**
-A: Use MySQL dump:
-```bash
-mysqldump -u root -p student_scheduling > backup.sql
-```
-
-**Q: Can I run this on a server for multiple users?**
-A: Yes, but you'll need to configure proper database permissions and network access.
-
-### Security Questions
-
-**Q: How secure are the passwords?**
-A: Passwords are hashed using BCrypt with salt, industry-standard security.
-
-**Q: Can others see my email address?**
-A: Email addresses are partially masked in the UI for privacy.
-
-**Q: What data is stored in the database?**
-A: Usernames, hashed passwords, email addresses, group memberships, and meeting schedules.
-
-**Q: Can I delete my account?**
-A: Account deletion is not implemented in UI. Database records can be manually removed.
-
-### Usage Questions
-
-**Q: Can I be in multiple study groups?**
-A: Current version supports one active group per session. Multiple groups require separate application instances.
-
-**Q: How do I export my schedule?**
-A: Export functionality is planned for future versions. Currently, use database queries.
-
-**Q: Can I set recurring meetings?**
-A: Not currently supported. Each meeting must be scheduled individually.
-
-**Q: What's the maximum meeting duration?**
-A: UI allows up to 240 minutes (4 hours). Database has no limit.
+**Q: Can I use this offline?**
+A: No, internet connection is required for OTP verification and email functionality.
 
 ---
 
-## Support and Contact
+## Support
 
-### Getting Help
-
-1. **Check this user guide** for common solutions
-2. **Review troubleshooting section** for specific issues
-3. **Check application logs** for error messages
-4. **Consult README.md** for technical details
-
-### Reporting Issues
-
-When reporting problems, include:
-- **Error messages**: Exact text of any error dialogs
-- **Steps to reproduce**: What you were doing when problem occurred
-- **System information**: OS, Java version, MySQL version
-- **Log output**: Console messages and stack traces
-
-### Feature Requests
-
-Future enhancements may include:
-- **Calendar export**: iCal/Google Calendar integration
-- **Mobile app**: Android/iOS companion
-- **Advanced scheduling**: Recurring meetings, time zones
-- **Enhanced notifications**: SMS, push notifications
-- **Multi-group support**: Participate in multiple groups
+For additional help:
+- Review the [CONFIGURATION.md](CONFIGURATION.md) file
+- Check the [README.md](README.md) for technical details
+- Contact your system administrator
+- Create an issue in the project repository
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: December 2024  
-**Support**: Educational use at Bangladesh University of Professionals
+**Last Updated**: July 2025
+**Version**: 2.0 with Enhanced Security and Conflict-Free Scheduling

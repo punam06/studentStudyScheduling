@@ -210,92 +210,15 @@ public class LoginView extends JFrame {
     }
 
     /**
-     * Shows a dialog for registering a new user with email verification.
+     * Shows the registration dialog for creating new accounts.
      */
     private void showRegistrationDialog() {
-        JPanel panel = new JPanel(new GridLayout(5, 2, 5, 5));
-        JTextField usernameField = new JTextField();
-        JTextField emailField = new JTextField();
-        JPasswordField passwordField = new JPasswordField();
-        JPasswordField confirmPasswordField = new JPasswordField();
-
-        // Add role selection
-        String[] roles = {"Student", "Regular User"};
-        JComboBox<String> roleComboBox = new JComboBox<>(roles);
-
-        panel.add(new JLabel("Username:"));
-        panel.add(usernameField);
-        panel.add(new JLabel("Email:"));
-        panel.add(emailField);
-        panel.add(new JLabel("Password:"));
-        panel.add(passwordField);
-        panel.add(new JLabel("Confirm Password:"));
-        panel.add(confirmPasswordField);
-        panel.add(new JLabel("Role:"));
-        panel.add(roleComboBox);
-
-        int result = JOptionPane.showConfirmDialog(this, panel, "Register New User",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-        if (result == JOptionPane.OK_OPTION) {
-            String username = usernameField.getText().trim();
-            String email = emailField.getText().trim();
-            String password = new String(passwordField.getPassword());
-            String confirmPassword = new String(confirmPasswordField.getPassword());
-            int selectedRole = roleComboBox.getSelectedIndex();
-            UserAccount.UserRole role = selectedRole == 0 ?
-                    UserAccount.UserRole.STUDENT : UserAccount.UserRole.USER;
-
-            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Username, email, and password cannot be empty",
-                        "Registration Error",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (!isValidEmail(email)) {
-                JOptionPane.showMessageDialog(this,
-                        "Please enter a valid email address",
-                        "Registration Error",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (!password.equals(confirmPassword)) {
-                JOptionPane.showMessageDialog(this,
-                        "Passwords do not match",
-                        "Registration Error",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (password.length() < 6) {
-                JOptionPane.showMessageDialog(this,
-                        "Password must be at least 6 characters long",
-                        "Registration Error",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            // Attempt to register the user
-            boolean success = authService.registerUser(username, email, password, role);
-
-            if (success) {
-                // Show OTP verification dialog for new registration
-                OTPVerificationDialog otpDialog = new OTPVerificationDialog(
-                    this, authService, username, email);
-                otpDialog.setVisible(true);
-
-                if (otpDialog.isVerified()) {
-                    JOptionPane.showMessageDialog(this,
-                            "Registration and email verification successful! You can now login.",
-                            "Registration Complete",
-                            JOptionPane.INFORMATION_MESSAGE);
-                }
-            }
-            // Error messages are already handled by the AuthenticationService
-        }
+        RegistrationView registrationView = new RegistrationView(authService);
+        registrationView.setOnRegistrationSuccess(() -> {
+            statusLabel.setText("Registration successful! You can now login.");
+            statusLabel.setForeground(new Color(0, 128, 0));
+        });
+        registrationView.showRegistrationForm();
     }
 
     /**
@@ -309,75 +232,203 @@ public class LoginView extends JFrame {
     }
 
     /**
-     * Shows a dialog for password recovery.
+     * Shows a dialog for password recovery with improved UI and no character limitations.
      */
     private void showForgotPasswordDialog() {
-        JPanel panel = new JPanel(new GridLayout(2, 2, 5, 5));
-        JTextField emailField = new JTextField();
-        JPasswordField newPasswordField = new JPasswordField();
-        JPasswordField confirmNewPasswordField = new JPasswordField();
+        // Create a more spacious dialog with better layout
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        panel.add(new JLabel("Email:"));
-        panel.add(emailField);
-        panel.add(new JLabel("New Password:"));
-        panel.add(newPasswordField);
-        panel.add(new JLabel("Confirm New Password:"));
-        panel.add(confirmNewPasswordField);
+        // Header
+        JLabel headerLabel = new JLabel("Reset Your Password");
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        mainPanel.add(headerLabel, BorderLayout.NORTH);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Forgot Password",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        // Form panel with improved layout
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        if (result == JOptionPane.OK_OPTION) {
+        // Email field with larger, more visible text field
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(new JLabel("Email Address:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        JTextField emailField = new JTextField(25); // Wider field
+        emailField.setFont(new Font("Arial", Font.PLAIN, 14)); // Larger font
+        emailField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.GRAY, 1),
+            BorderFactory.createEmptyBorder(5, 8, 5, 8)
+        ));
+        formPanel.add(emailField, gbc);
+
+        // New password field
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.weightx = 0.0;
+        formPanel.add(new JLabel("New Password:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 1;
+        gbc.weightx = 1.0;
+        JPasswordField newPasswordField = new JPasswordField(25);
+        newPasswordField.setFont(new Font("Arial", Font.PLAIN, 14));
+        newPasswordField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.GRAY, 1),
+            BorderFactory.createEmptyBorder(5, 8, 5, 8)
+        ));
+        formPanel.add(newPasswordField, gbc);
+
+        // Confirm password field
+        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.weightx = 0.0;
+        formPanel.add(new JLabel("Confirm Password:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 2;
+        gbc.weightx = 1.0;
+        JPasswordField confirmPasswordField = new JPasswordField(25);
+        confirmPasswordField.setFont(new Font("Arial", Font.PLAIN, 14));
+        confirmPasswordField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.GRAY, 1),
+            BorderFactory.createEmptyBorder(5, 8, 5, 8)
+        ));
+        formPanel.add(confirmPasswordField, gbc);
+
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+
+        // Info panel
+        JPanel infoPanel = new JPanel(new BorderLayout());
+        JLabel infoLabel = new JLabel("<html><i>Enter your registered email address and choose a new password.<br/>No character limitations apply.</i></html>");
+        infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        infoLabel.setForeground(Color.GRAY);
+        infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        infoPanel.add(infoLabel, BorderLayout.CENTER);
+        mainPanel.add(infoPanel, BorderLayout.SOUTH);
+
+        // Create custom dialog
+        JDialog dialog = new JDialog(this, "Password Recovery", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(mainPanel, BorderLayout.CENTER);
+
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton cancelButton = new JButton("Cancel");
+        JButton resetButton = new JButton("Reset Password");
+        resetButton.setBackground(new Color(70, 130, 180));
+        resetButton.setForeground(Color.WHITE);
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+        resetButton.addActionListener(e -> {
             String email = emailField.getText().trim();
             String newPassword = new String(newPasswordField.getPassword());
-            String confirmNewPassword = new String(confirmNewPasswordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
 
-            if (email.isEmpty() || newPassword.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Email and new password cannot be empty",
-                        "Password Recovery Error",
-                        JOptionPane.ERROR_MESSAGE);
+            // Validation with improved error messages
+            if (email.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Please enter your email address",
+                        "Email Required",
+                        JOptionPane.WARNING_MESSAGE);
+                emailField.requestFocus();
+                return;
+            }
+
+            if (newPassword.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Please enter a new password",
+                        "Password Required",
+                        JOptionPane.WARNING_MESSAGE);
+                newPasswordField.requestFocus();
                 return;
             }
 
             if (!isValidEmail(email)) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(dialog,
                         "Please enter a valid email address",
-                        "Password Recovery Error",
-                        JOptionPane.ERROR_MESSAGE);
+                        "Invalid Email",
+                        JOptionPane.WARNING_MESSAGE);
+                emailField.requestFocus();
                 return;
             }
 
-            if (!newPassword.equals(confirmNewPassword)) {
-                JOptionPane.showMessageDialog(this,
-                        "Passwords do not match",
-                        "Password Recovery Error",
-                        JOptionPane.ERROR_MESSAGE);
+            if (!newPassword.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Passwords do not match. Please try again.",
+                        "Password Mismatch",
+                        JOptionPane.WARNING_MESSAGE);
+                confirmPasswordField.requestFocus();
                 return;
             }
 
-            if (newPassword.length() < 6) {
-                JOptionPane.showMessageDialog(this,
-                        "Password must be at least 6 characters long",
-                        "Password Recovery Error",
-                        JOptionPane.ERROR_MESSAGE);
+            // Remove the 6-character limitation - allow any length password
+            if (newPassword.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Password cannot be empty or contain only spaces",
+                        "Invalid Password",
+                        JOptionPane.WARNING_MESSAGE);
+                newPasswordField.requestFocus();
                 return;
             }
 
-            // Attempt to recover the password
-            boolean success = authService.recoverPassword(email, newPassword);
+            // Show progress
+            resetButton.setEnabled(false);
+            resetButton.setText("Resetting...");
 
-            if (success) {
-                JOptionPane.showMessageDialog(this,
-                        "Password reset successful! You can now login with the new password.",
-                        "Password Recovery Complete",
-                        JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this,
-                        "Failed to reset password. Please check the email and try again.",
-                        "Password Recovery Error",
-                        JOptionPane.ERROR_MESSAGE);
+            // Perform password reset in background
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    boolean success = authService.recoverPassword(email, newPassword);
+
+                    if (success) {
+                        JOptionPane.showMessageDialog(dialog,
+                                "Password reset successful!\n\nYou can now login with your new password.",
+                                "Password Reset Complete",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        dialog.dispose();
+
+                        // Clear the login form and show success message
+                        usernameField.setText("");
+                        passwordField.setText("");
+                        statusLabel.setText("Password reset successful! You can now login.");
+                        statusLabel.setForeground(new Color(0, 128, 0));
+
+                    } else {
+                        JOptionPane.showMessageDialog(dialog,
+                                "Password reset failed.\n\nPlease check that the email address is registered and try again.",
+                                "Password Reset Error",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(dialog,
+                            "An error occurred during password reset:\n" + ex.getMessage(),
+                            "System Error",
+                            JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    resetButton.setEnabled(true);
+                    resetButton.setText("Reset Password");
+                }
+            });
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(resetButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        // Set dialog properties
+        dialog.setSize(450, 350);
+        dialog.setLocationRelativeTo(this);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        // Make email field focused by default
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                emailField.requestFocus();
             }
-        }
+        });
+
+        dialog.setVisible(true);
     }
 }

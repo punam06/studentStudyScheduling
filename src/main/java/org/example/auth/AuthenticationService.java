@@ -105,7 +105,7 @@ public class AuthenticationService {
 
     /**
      * Attempts to log in a user with the provided credentials.
-     * This initiates the OTP verification process or falls back to direct login if email fails.
+     * Always sends OTP to registered email address for authentication.
      *
      * @param username The username to log in
      * @param password The password for the account
@@ -116,7 +116,7 @@ public class AuthenticationService {
             return fallbackLogin(username, password);
         }
 
-        // Normal database login with OTP
+        // Normal database login with mandatory OTP
         Optional<UserAccount> userOptional = userDAO.findByUsername(username);
 
         if (userOptional.isEmpty()) {
@@ -130,40 +130,31 @@ public class AuthenticationService {
             return false;
         }
 
-        // For default accounts or if email is not properly configured, skip OTP
-        if (isDefaultAccount(username) || !isEmailConfigured()) {
-            currentUser = user;
-            System.out.println("✅ Direct login successful for user: " + username + " (OTP skipped)");
-            return true;
+        // Check if user has a valid email address
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            System.err.println("❌ User " + username + " does not have a registered email address");
+            return false;
         }
 
         // Add user to pending verifications
         pendingVerifications.put(username, user);
 
-        // Send OTP to user's email
-        if (user.getEmail() != null && !user.getEmail().isEmpty()) {
-            try {
-                boolean otpSent = otpService.generateAndSendOTP(user.getId(), user.getEmail());
-                if (otpSent) {
-                    System.out.println("OTP sent to: " + user.getEmail());
-                    return true;
-                } else {
-                    // Email failed, fall back to direct login
-                    System.out.println("⚠️  Email failed, allowing direct login for: " + username);
-                    currentUser = user;
-                    pendingVerifications.remove(username);
-                    return true;
-                }
-            } catch (Exception e) {
-                // Email service error, fall back to direct login
-                System.out.println("⚠️  Email service error, allowing direct login for: " + username);
-                currentUser = user;
-                pendingVerifications.remove(username);
+        // Always send OTP to user's email - this is now mandatory
+        try {
+            boolean otpSent = otpService.generateAndSendOTP(user.getId(), user.getEmail());
+            if (otpSent) {
+                System.out.println("✉️ OTP sent to: " + user.getEmail());
                 return true;
+            } else {
+                System.err.println("❌ Failed to send OTP to: " + user.getEmail());
+                pendingVerifications.remove(username);
+                return false;
             }
+        } catch (Exception e) {
+            System.err.println("❌ Email service error: " + e.getMessage());
+            pendingVerifications.remove(username);
+            return false;
         }
-
-        return false;
     }
 
     /**

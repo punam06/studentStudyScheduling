@@ -1,14 +1,21 @@
 # Student Scheduling System
 
-A comprehensive Java Swing application for managing study group schedules with MySQL database integration and OTP-based authentication.
+A comprehensive Java Swing application for managing study group schedules with MySQL database integration and mandatory OTP-based authentication.
 
 ## 🌟 Features
 
 ### Authentication & Security
-- **Two-Factor Authentication**: OTP-based login via email
-- **Role-Based Access Control**: Admin, Student, and Regular User roles
+- **Mandatory Two-Factor Authentication**: OTP required for every login via email
+- **Role-Based Access Control**: Admin and Student roles (Regular User removed)
 - **Secure Password Storage**: BCrypt hashing with salt
-- **Email Verification**: Required for new user registration
+- **Email Verification**: Required for all user accounts
+- **Separate Registration**: Distinct registration paths for Students and Admins
+
+### Conflict-Free Scheduling
+- **Automatic Conflict Detection**: Uses ArrayList-based conflict checking
+- **Overlap Prevention**: Prevents double-booking of time slots
+- **Conflict Reporting**: Detailed information about scheduling conflicts
+- **Smart Scheduling**: Ensures no overlapping meetings or study sessions
 
 ### Database Integration
 - **MySQL Database**: Persistent data storage
@@ -18,14 +25,15 @@ A comprehensive Java Swing application for managing study group schedules with M
 
 ### Study Group Management
 - **Member Management**: Add, edit, remove group members
-- **Schedule Coordination**: Find common available time slots
-- **Meeting Scheduling**: Schedule meetings with email notifications
+- **Schedule Coordination**: Find common available time slots with conflict prevention
+- **Meeting Scheduling**: Schedule meetings with automatic conflict detection
 - **Force Scheduling**: Admin-only emergency meeting scheduling
 
 ### Communication
 - **Email Integration**: JavaMail API for sending notifications
 - **Meeting Invitations**: HTML email templates
 - **OTP Delivery**: Secure code delivery for authentication
+- **Mandatory Email Verification**: OTP sent to registered email for every login
 
 ## 🚀 Quick Start
 
@@ -54,232 +62,158 @@ A comprehensive Java Swing application for managing study group schedules with M
    private static final String EMAIL_PASSWORD = "your-app-password";
    ```
 
-4. **Configure Database Connection**
-   Edit `src/main/java/org/example/database/DatabaseConfig.java`:
-   ```java
-   private static final String DB_PASSWORD = "your-mysql-password";
-   ```
-
-5. **Build and Run**
+4. **Build and Run**
    ```bash
+   # Using Gradle wrapper
    ./gradlew build
    ./gradlew run
+   
+   # Or using quick start script
+   ./quick_start.sh
    ```
 
-## 📧 Email Configuration
+## 🔐 Authentication System
 
-### Gmail Setup
-1. Enable 2-Factor Authentication on your Gmail account
-2. Generate an App Password:
-   - Go to Google Account settings
-   - Security → 2-Step Verification → App passwords
-   - Generate password for "Mail"
-3. Use this App Password in the EMAIL_PASSWORD field
+### Account Types
+- **Student Account**: Access to personal scheduling and study group participation
+- **Admin Account**: Full system access including user management and force scheduling
 
-### Alternative Email Providers
-Update SMTP settings in `EmailService.java`:
-- **Outlook**: smtp-mail.outlook.com:587
-- **Yahoo**: smtp.mail.yahoo.com:587
-- **Custom SMTP**: Update host and port accordingly
-
-## 🗄️ Database Setup
-
-### Automatic Setup
-The application automatically creates required tables on first run:
-- `users` - User accounts and authentication
-- `otp_tokens` - OTP verification codes
-- `study_groups` - Study group information
-- `schedules` - Meeting schedules
-- `members` - Group membership
-
-### Manual Setup
-Run the provided SQL script:
-```bash
-mysql -u root -p
-source database_setup.sql
-```
-
-## 👥 User Roles
-
-### Administrator
-- Full access to all features
-- Can force schedule meetings
-- User management capabilities
-- System configuration access
-
-### Student
-- Create and join study groups
-- Schedule meetings (with availability)
-- View and respond to invitations
-- Limited administrative access
-
-### Regular User
-- Standard scheduling features
-- Group participation
-- Meeting coordination
-- Email notifications
-
-## 🔐 Authentication Flow
-
-### Registration
-1. User provides username, email, and password
-2. System validates input and checks for duplicates
-3. OTP sent to email address
-4. User enters OTP to verify email
-5. Account activated upon successful verification
-
-### Login
-1. User enters username and password
+### Login Process
+1. Enter username and password
 2. System validates credentials
-3. OTP sent to registered email
-4. User enters OTP to complete login
-5. Access granted based on user role
+3. OTP is automatically sent to registered email address
+4. Enter 6-digit OTP code within 10 minutes
+5. Access granted upon successful verification
 
-## 🛠️ Development
+**Note**: OTP verification is mandatory for every login - no bypass options available.
 
-### Project Structure
-```
-src/main/java/org/example/
-├── Main.java                    # Application entry point
-├── MainFrame.java              # Main application window
-├── SplashScreen.java           # Loading screen
-├── auth/                       # Authentication components
-│   ├── AuthenticationService.java
-│   ├── OTPService.java
-│   └── UserAccount.java
-├── database/                   # Database layer
-│   ├── DatabaseConfig.java
-│   └── UserDAO.java
-├── model/                      # Data models
-│   ├── Member.java
-│   ├── Schedule.java
-│   ├── StudyGroup.java
-│   └── TimeSlot.java
-├── util/                       # Utilities
-│   └── EmailService.java
-└── view/                       # UI components
-    ├── CalendarGrid.java
-    ├── ForceScheduleDialog.java
-    ├── LoginView.java
-    └── OTPVerificationDialog.java
-```
+### Password Recovery
+1. Click "Forgot Password" on the login screen
+2. Enter your registered email address in the large, visible email field
+3. Create a new password (no character limitations)
+4. Confirm your new password
+5. System verifies your email and updates your password
+6. Login with your new credentials
 
-### Dependencies
-- **MySQL Connector**: Database connectivity
-- **JavaMail API**: Email functionality
-- **BCrypt**: Password hashing
-- **HikariCP**: Connection pooling
-- **JSON Simple**: Configuration management
+**Enhanced Password Recovery Features**:
+- **Large, Visible Email Field**: 25-character wide field with clear borders
+- **No Password Limitations**: Set any length password you prefer
+- **Professional Interface**: Clean, user-friendly dialog design
+- **Auto-Focus**: Email field automatically selected for quick entry
+- **Clear Instructions**: Helpful guidance throughout the process
 
-## 🧪 Testing
+### Registration Process
+1. Choose account type (Student or Admin)
+2. Enter username, email, and password
+3. OTP sent to email for verification
+4. Complete registration with OTP verification
 
-### Manual Testing
-1. **Authentication Test**
-   ```
-   Username: admin
-   Password: admin123
-   Email: Check console for OTP (if email not configured)
-   ```
+## 📅 Scheduling Features
 
-2. **Student Account Test**
-   ```
-   Username: student
-   Password: student123
-   ```
+### Conflict-Free Scheduling
+- **Automatic Detection**: System prevents overlapping time slots
+- **Real-time Validation**: Immediate feedback on scheduling conflicts
+- **Conflict Resolution**: Detailed information about conflicting appointments
+- **Smart Suggestions**: Alternative time slots when conflicts occur
 
-3. **Feature Testing**
-   - Create study groups
-   - Add members
-   - Schedule meetings
-   - Test role-based access
+### Time Slot Management
+- Add new time slots with automatic conflict checking
+- Remove existing time slots
+- View all scheduled items with conflict indicators
+- Get detailed conflict reports
 
-### Database Verification
-```sql
--- Check user accounts
-SELECT username, email, role, is_email_verified FROM users;
+## 🛠️ Technical Implementation
 
--- Check OTP tokens
-SELECT user_id, otp_code, expires_at, is_used FROM otp_tokens;
-```
+### Security Enhancements
+- **Mandatory OTP**: Every login requires email verification
+- **Email Validation**: Ensures valid email addresses for all accounts
+- **Enhanced Password Security**: BCrypt with salt for password storage
+- **Session Management**: Secure user session handling
 
-## 🐛 Troubleshooting
+### Scheduling Algorithm
+- **ArrayList-based Conflict Detection**: Efficient O(n) conflict checking
+- **Overlap Detection**: Precise time slot overlap calculation
+- **Conflict Reporting**: Comprehensive conflict information
+- **Schedule Integrity**: Maintains schedule consistency
 
-### Common Issues
+### Database Schema
+- Users table with role-based permissions
+- Time slots with conflict prevention
+- OTP verification tracking
+- Session management
 
-#### Database Connection Failed
-- Verify MySQL server is running
-- Check database credentials in `DatabaseConfig.java`
-- Ensure database `student_scheduling` exists
+## 📋 Default Accounts
 
-#### Email Sending Failed
-- Verify email credentials in `EmailService.java`
-- Check Gmail App Password setup
-- Ensure network connectivity
+For testing purposes, default accounts are available:
 
-#### OTP Not Received
-- Check email spam folder
-- Verify email address in user account
-- Check console output for email errors
+- **Admin Account**: 
+  - Username: `admin`
+  - Password: `admin123`
+  - Email: `admin@example.com`
 
-#### Build Failures
-- Ensure Java 17+ is installed
-- Check Gradle wrapper permissions: `chmod +x gradlew`
-- Clear build cache: `./gradlew clean`
+- **Student Account**:
+  - Username: `student` 
+  - Password: `student123`
+  - Email: `student@example.com`
 
-### Debug Mode
-Enable detailed logging by setting:
+**Important**: These accounts also require OTP verification for login.
+
+## 🔧 Configuration
+
+### Email Configuration
+The system requires a valid Gmail account with an App Password for OTP delivery:
+
+1. Enable 2-factor authentication on your Gmail account
+2. Generate an App Password for the application
+3. Update the email credentials in `EmailService.java`
+
+### Database Configuration
+MySQL connection settings can be configured in `DatabaseConfig.java`:
+
 ```java
-System.setProperty("java.util.logging.level", "ALL");
+private static final String URL = "jdbc:mysql://localhost:3306/student_scheduling";
+private static final String USERNAME = "root";
+private static final String PASSWORD = "your-password";
 ```
 
-## 📝 Default Accounts
+## 🚨 Important Security Notes
 
-The system creates default accounts on first run:
+1. **OTP is Mandatory**: Every login requires OTP verification via email
+2. **Email Required**: All accounts must have valid email addresses
+3. **No Bypass Options**: Security features cannot be disabled
+4. **Session Security**: User sessions are properly managed and secured
 
-| Username | Password | Role | Email |
-|----------|----------|------|-------|
-| admin | admin123 | ADMIN | admin@example.com |
-| student | student123 | STUDENT | student@example.com |
+## 📖 User Guide
 
-**Note**: Change default passwords in production!
+For detailed usage instructions, see [USER_GUIDE.md](USER_GUIDE.md).
 
-## 🔒 Security Considerations
+## ⚙️ Configuration
 
-- **Password Policy**: Minimum 6 characters (consider strengthening)
-- **OTP Expiry**: 10-minute timeout for security
-- **Session Management**: Automatic logout on application close
-- **SQL Injection**: Protected via PreparedStatements
-- **Email Privacy**: Email addresses masked in UI
-
-## 📈 Performance
-
-- **Connection Pooling**: Maximum 10 concurrent connections
-- **Database Indexes**: Optimized for common queries
-- **Memory Management**: Efficient Swing component handling
-- **Background Processing**: Non-blocking email operations
+For system configuration details, see [CONFIGURATION.md](CONFIGURATION.md).
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch: `git checkout -b feature/new-feature`
-3. Commit changes: `git commit -am 'Add new feature'`
-4. Push to branch: `git push origin feature/new-feature`
-5. Submit Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly (especially security features)
+5. Submit a pull request
 
 ## 📄 License
 
-This project is developed for educational purposes at Bangladesh University of Professionals.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 📞 Support
+## 🆘 Support
 
-For issues and questions:
-- Check troubleshooting section above
-- Review application logs
-- Create issue in repository
+For issues or questions:
+1. Check the [USER_GUIDE.md](USER_GUIDE.md) for usage instructions
+2. Review the [CONFIGURATION.md](CONFIGURATION.md) for setup help
+3. Create an issue in the GitHub repository
 
----
+## 🏗️ Architecture
 
-**Version**: 1.0.0  
-**Last Updated**: December 2024  
-**Java Version**: 17+  
-**Database**: MySQL 8.0+
+- **Frontend**: Java Swing GUI with custom components
+- **Backend**: Java with MySQL database integration
+- **Security**: BCrypt password hashing + OTP verification
+- **Communication**: JavaMail API for email notifications
+- **Scheduling**: Conflict-free algorithm with ArrayList-based detection

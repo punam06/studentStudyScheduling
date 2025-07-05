@@ -22,7 +22,6 @@ public class UserAccount {
      */
     public enum UserRole {
         ADMIN,    // Administrator with full access
-        USER,     // Regular user
         STUDENT   // Student user
     }
 
