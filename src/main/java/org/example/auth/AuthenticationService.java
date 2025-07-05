@@ -107,17 +107,17 @@ public class AuthenticationService {
      * Attempts to log in a user with the provided credentials.
      * Always sends OTP to registered email address for authentication.
      *
-     * @param username The username to log in
+     * @param email The email to log in with
      * @param password The password for the account
      * @return true if credentials are valid and OTP was sent, false otherwise
      */
-    public boolean initiateLogin(String username, String password) {
+    public boolean initiateLogin(String email, String password) {
         if (usingFallback) {
-            return fallbackLogin(username, password);
+            return fallbackLogin(email, password);
         }
 
-        // Normal database login with mandatory OTP
-        Optional<UserAccount> userOptional = userDAO.findByUsername(username);
+        // Normal database login with mandatory OTP using email
+        Optional<UserAccount> userOptional = userDAO.findByEmail(email);
 
         if (userOptional.isEmpty()) {
             return false;
@@ -132,12 +132,12 @@ public class AuthenticationService {
 
         // Check if user has a valid email address
         if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
-            System.err.println("❌ User " + username + " does not have a registered email address");
+            System.err.println("❌ User " + email + " does not have a registered email address");
             return false;
         }
 
-        // Add user to pending verifications
-        pendingVerifications.put(username, user);
+        // Add user to pending verifications using email as key
+        pendingVerifications.put(email, user);
 
         // Always send OTP to user's email - this is now mandatory
         try {
@@ -147,28 +147,28 @@ public class AuthenticationService {
                 return true;
             } else {
                 System.err.println("❌ Failed to send OTP to: " + user.getEmail());
-                pendingVerifications.remove(username);
+                pendingVerifications.remove(email);
                 return false;
             }
         } catch (Exception e) {
             System.err.println("❌ Email service error: " + e.getMessage());
-            pendingVerifications.remove(username);
+            pendingVerifications.remove(email);
             return false;
         }
     }
 
     /**
-     * Fallback login method that works without database/OTP.
+     * Fallback login method that works without database/OTP using email.
      */
-    private boolean fallbackLogin(String username, String password) {
-        UserAccount user = fallbackUsers.get(username);
-
-        if (user != null && user.verifyPassword(password)) {
-            currentUser = user;
-            System.out.println("✅ Fallback login successful for user: " + username);
-            return true;
+    private boolean fallbackLogin(String email, String password) {
+        // For fallback mode, check if the email matches any of our fallback users
+        for (UserAccount user : fallbackUsers.values()) {
+            if (email.equals(user.getEmail()) && user.verifyPassword(password)) {
+                currentUser = user;
+                System.out.println("✅ Fallback login successful for user: " + email);
+                return true;
+            }
         }
-
         return false;
     }
 

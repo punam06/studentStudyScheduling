@@ -8,10 +8,10 @@ import java.awt.*;
 import java.awt.event.*;
 
 /**
- * Login form for user authentication with OTP verification.
+ * Login form for user authentication with OTP verification using email.
  */
 public class LoginView extends JFrame {
-    private JTextField usernameField;
+    private JTextField emailField;
     private JPasswordField passwordField;
     private JButton loginButton;
     private JButton registerButton;
@@ -68,17 +68,17 @@ public class LoginView extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
 
-        // Username field
+        // Email field
         gbc.gridx = 0;
         gbc.gridy = 0;
-        formPanel.add(new JLabel("Username:"), gbc);
+        formPanel.add(new JLabel("Email:"), gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 0;
         gbc.weightx = 1.0;
-        usernameField = new JTextField(20);
+        emailField = new JTextField(20);
         // Remove auto-filled admin credentials
-        formPanel.add(usernameField, gbc);
+        formPanel.add(emailField, gbc);
 
         // Password field
         gbc.gridx = 0;
@@ -97,7 +97,7 @@ public class LoginView extends JFrame {
         gbc.gridx = 0;
         gbc.gridy = 2;
         gbc.gridwidth = 2;
-        JLabel infoLabel = new JLabel("<html>Default accounts:<br/>Admin: admin / admin123<br/>Student: student / student123</html>");
+        JLabel infoLabel = new JLabel("<html>Default accounts:<br/>Admin: admin@example.com / admin123<br/>Student: student@example.com / student123</html>");
         infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
         infoLabel.setForeground(Color.GRAY);
         formPanel.add(infoLabel, gbc);
@@ -145,11 +145,11 @@ public class LoginView extends JFrame {
      * This will initiate the OTP verification process or direct login in fallback mode.
      */
     private void attemptLogin() {
-        String username = usernameField.getText().trim();
+        String email = emailField.getText().trim();
         String password = new String(passwordField.getPassword());
 
-        if (username.isEmpty() || password.isEmpty()) {
-            statusLabel.setText("Please enter both username and password");
+        if (email.isEmpty() || password.isEmpty()) {
+            statusLabel.setText("Please enter both email and password");
             return;
         }
 
@@ -161,7 +161,7 @@ public class LoginView extends JFrame {
         loginButton.setText("Logging in...");
 
         SwingUtilities.invokeLater(() -> {
-            boolean loginResult = authService.initiateLogin(username, password);
+            boolean loginResult = authService.initiateLogin(email, password);
 
             if (loginResult) {
                 // Check if we need OTP verification or if login is complete
@@ -173,14 +173,14 @@ public class LoginView extends JFrame {
                     if (onLoginSuccess != null) {
                         onLoginSuccess.run();
                     }
-                } else if (authService.hasPendingVerification(username)) {
+                } else if (authService.hasPendingVerification(email)) {
                     // OTP verification needed
-                    String email = authService.getPendingVerificationEmail(username);
+                    String userEmail = authService.getPendingVerificationEmail(email);
 
-                    if (email != null) {
+                    if (userEmail != null) {
                         // Show OTP verification dialog
                         OTPVerificationDialog otpDialog = new OTPVerificationDialog(
-                            this, authService, username, email);
+                            this, authService, email, userEmail);
                         otpDialog.setVisible(true);
 
                         // Check if login was successful after OTP verification
@@ -199,7 +199,7 @@ public class LoginView extends JFrame {
                     }
                 }
             } else {
-                statusLabel.setText("Invalid username or password");
+                statusLabel.setText("Invalid email or password");
                 passwordField.setText("");
             }
 
@@ -389,7 +389,7 @@ public class LoginView extends JFrame {
                         dialog.dispose();
 
                         // Clear the login form and show success message
-                        usernameField.setText("");
+                        emailField.setText("");
                         passwordField.setText("");
                         statusLabel.setText("Password reset successful! You can now login.");
                         statusLabel.setForeground(new Color(0, 128, 0));

@@ -79,8 +79,8 @@ A comprehensive Java Swing application for managing study group schedules with M
 - **Admin Account**: Full system access including user management and force scheduling
 
 ### Login Process
-1. Enter username and password
-2. System validates credentials
+1. Enter email address and password
+2. System validates credentials using email
 3. OTP is automatically sent to registered email address
 4. Enter 6-digit OTP code within 10 minutes
 5. Access granted upon successful verification
