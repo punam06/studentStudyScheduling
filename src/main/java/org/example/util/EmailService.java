@@ -21,9 +21,9 @@ public class EmailService {
     // Email configuration - update these with your email settings
     private static final String SMTP_HOST = "smtp.gmail.com";
     private static final String SMTP_PORT = "587";
-    private static final String EMAIL_USERNAME = "your-email@gmail.com"; // Replace with your email
-    private static final String EMAIL_PASSWORD = "your-app-password"; // Replace with your app password
-    private static final String FROM_EMAIL = "your-email@gmail.com"; // Replace with your email
+    private static final String EMAIL_USERNAME = "punam.papri@gmail.com"; // Replace with your email
+    private static final String EMAIL_PASSWORD = "tgct ntes ptck yzet"; // Replace with your app password
+    private static final String FROM_EMAIL = "punam.papri@gmail.com"; // Replace with your email
 
     // Check if email is properly configured
     private static final boolean EMAIL_CONFIGURED = !EMAIL_USERNAME.equals("your-email@gmail.com") &&
