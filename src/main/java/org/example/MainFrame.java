@@ -300,7 +300,7 @@ public class MainFrame extends JFrame {
         // Create the calendar grid
         calendarGrid = new CalendarGrid();
         calendarGrid.setDate(LocalDate.now());
-        calendarGrid.setTimeRange(LocalTime.of(8, 0), LocalTime.of(22, 0));
+        // Time ranges are now pre-configured: 8 AM to 2 PM and 8 PM to 1 AM
         calendarGrid.setTimeSlotInterval(30);
 
         // Handle toolbar actions
@@ -538,8 +538,8 @@ public class MainFrame extends JFrame {
             studyGroup.setDefaultEndTime(LocalTime.of(endHour, 0));
             studyGroup.setMinimumMembersRequired(minMembers);
 
-            // Update calendar grid with new time range
-            calendarGrid.setTimeRange(LocalTime.of(startHour, 0), LocalTime.of(endHour, 0));
+            // Note: Calendar grid now uses fixed time ranges (8 AM-2 PM and 8 PM-1 AM)
+            // Time range preferences are stored in the study group for other purposes
 
             statusBar.setMessage("Preferences updated");
         }
