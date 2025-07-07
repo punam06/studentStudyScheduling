@@ -9,13 +9,16 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import org.example.auth.AuthenticationService;
+import org.example.auth.SimpleAuthService;
 import org.example.auth.UserAccount;
 import org.example.model.Member;
 import org.example.model.StudyGroup;
 import org.example.model.TimeSlot;
 import org.example.util.EmailService;
+import org.example.util.DataManager;
 import org.example.view.CalendarGrid;
 import org.example.view.ForceScheduleDialog;
 
@@ -32,14 +35,18 @@ public class MainFrame extends JFrame {
 
     private StudyGroup studyGroup;
     private EmailService emailService;
+    private DataManager dataManager;
 
-    private AuthenticationService authService;
+    private SimpleAuthService authService;
 
     // Modify constructor to include error handling
-    public MainFrame(AuthenticationService authService) {
+    public MainFrame(SimpleAuthService authService) {
         try {
-            // Create a new study group
-            studyGroup = new StudyGroup("My Study Group");
+            // Initialize data manager
+            dataManager = new DataManager();
+
+            // Load existing study group or create new one
+            studyGroup = dataManager.loadStudyGroup();
 
             // Initialize email service
             emailService = new EmailService();
@@ -51,6 +58,9 @@ public class MainFrame extends JFrame {
             try {
                 initializeUI();
                 System.out.println("UI initialized successfully");
+
+                // Load existing members into the UI
+                loadMembersIntoUI();
 
                 // Apply role-based access control
                 applyRoleBasedAccess();
@@ -68,6 +78,18 @@ public class MainFrame extends JFrame {
                     "Initialization Error",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * Loads existing members from the study group into the UI.
+     */
+    private void loadMembersIntoUI() {
+        memberListModel.clear();
+        for (Member member : studyGroup.getMembers()) {
+            memberListModel.addElement(member);
+        }
+        updateCalendarGridMembers();
+        statusBar.setMessage("Loaded " + studyGroup.getMembers().size() + " members");
     }
 
     /**
@@ -239,6 +261,21 @@ public class MainFrame extends JFrame {
         emailItem.addActionListener(e -> sendInvitations());
         scheduleMenu.add(emailItem);
 
+        // Groups menu (new)
+        JMenu groupsMenu = new JMenu("Groups");
+        JMenuItem viewGroupsItem = new JMenuItem("View Groups");
+        viewGroupsItem.addActionListener(e -> showGroupsDialog());
+        groupsMenu.add(viewGroupsItem);
+
+        JMenuItem manageGroupsItem = new JMenuItem("Manage Groups");
+        manageGroupsItem.addActionListener(e -> showManageGroupsDialog());
+        groupsMenu.add(manageGroupsItem);
+
+        groupsMenu.addSeparator();
+        JMenuItem findGroupSlotsItem = new JMenuItem("Find Group Common Slots");
+        findGroupSlotsItem.addActionListener(e -> showFindGroupSlotsDialog());
+        groupsMenu.add(findGroupSlotsItem);
+
         // Settings menu
         JMenu settingsMenu = new JMenu("Settings");
         JMenuItem preferencesItem = new JMenuItem("Preferences");
@@ -266,8 +303,9 @@ public class MainFrame extends JFrame {
         menuBar.add(fileMenu);
         menuBar.add(editMenu);
         menuBar.add(scheduleMenu);
+        menuBar.add(groupsMenu); // Add new groups menu
         menuBar.add(settingsMenu);
-        menuBar.add(accountMenu); // Add new account menu
+        menuBar.add(accountMenu);
         menuBar.add(helpMenu);
 
         setJMenuBar(menuBar);
@@ -369,14 +407,17 @@ public class MainFrame extends JFrame {
     }
 
     private void showAddMemberDialog() {
-        JPanel panel = new JPanel(new GridLayout(2, 2, 5, 5));
+        JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
         JTextField nameField = new JTextField();
         JTextField emailField = new JTextField();
+        JTextField groupField = new JTextField();
 
         panel.add(new JLabel("Name:"));
         panel.add(nameField);
         panel.add(new JLabel("Email:"));
         panel.add(emailField);
+        panel.add(new JLabel("Group (optional):"));
+        panel.add(groupField);
 
         int result = JOptionPane.showConfirmDialog(this, panel, "Add Member",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -384,16 +425,23 @@ public class MainFrame extends JFrame {
         if (result == JOptionPane.OK_OPTION) {
             String name = nameField.getText().trim();
             String email = emailField.getText().trim();
+            String group = groupField.getText().trim();
 
             if (!name.isEmpty()) {
                 Member newMember = new Member(name, email);
-                studyGroup.addMember(newMember);
+                if (!group.isEmpty()) {
+                    newMember.setGroup(group);
+                }
+
+                // Save member using DataManager
+                dataManager.saveMember(newMember, studyGroup);
                 memberListModel.addElement(newMember);
 
                 // Update calendar grid with new member
                 updateCalendarGridMembers();
 
-                statusBar.setMessage("Member added: " + name);
+                statusBar.setMessage("Member added: " + name +
+                    (group.isEmpty() ? "" : " (Group: " + group + ")"));
             }
         }
     }
@@ -407,7 +455,8 @@ public class MainFrame extends JFrame {
                     "Confirm Removal", JOptionPane.YES_NO_OPTION);
 
             if (result == JOptionPane.YES_OPTION) {
-                studyGroup.removeMember(selectedMember);
+                // Remove member using DataManager
+                dataManager.removeMember(selectedMember, studyGroup);
                 memberListModel.removeElement(selectedMember);
 
                 // Update calendar grid with removed member
@@ -425,14 +474,17 @@ public class MainFrame extends JFrame {
         Member selectedMember = memberList.getSelectedValue();
 
         if (selectedMember != null) {
-            JPanel panel = new JPanel(new GridLayout(2, 2, 5, 5));
+            JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
             JTextField nameField = new JTextField(selectedMember.getName());
             JTextField emailField = new JTextField(selectedMember.getEmail());
+            JTextField groupField = new JTextField(selectedMember.getGroup() != null ? selectedMember.getGroup() : "");
 
             panel.add(new JLabel("Name:"));
             panel.add(nameField);
             panel.add(new JLabel("Email:"));
             panel.add(emailField);
+            panel.add(new JLabel("Group (optional):"));
+            panel.add(groupField);
 
             int result = JOptionPane.showConfirmDialog(this, panel, "Edit Member",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -440,15 +492,21 @@ public class MainFrame extends JFrame {
             if (result == JOptionPane.OK_OPTION) {
                 String name = nameField.getText().trim();
                 String email = emailField.getText().trim();
+                String group = groupField.getText().trim();
 
                 if (!name.isEmpty()) {
                     selectedMember.setName(name);
                     selectedMember.setEmail(email);
+                    selectedMember.setGroup(group.isEmpty() ? null : group);
+
+                    // Save changes using DataManager
+                    dataManager.saveStudyGroup(studyGroup);
 
                     // Refresh the list
                     memberList.repaint();
 
-                    statusBar.setMessage("Member updated: " + name);
+                    statusBar.setMessage("Member updated: " + name +
+                        (group.isEmpty() ? "" : " (Group: " + group + ")"));
                 }
             }
         } else {
@@ -470,7 +528,12 @@ public class MainFrame extends JFrame {
             return;
         }
 
+        // Mark common slots without clearing existing ones
         calendarGrid.markCommonSlots();
+
+        // Save the current state to ensure persistence
+        saveSchedule();
+
         statusBar.setMessage("Common time slots marked");
     }
 
@@ -480,6 +543,9 @@ public class MainFrame extends JFrame {
                 "New Schedule", JOptionPane.YES_NO_OPTION);
 
         if (result == JOptionPane.YES_OPTION) {
+            // Clear current data
+            dataManager.clearAllData();
+
             studyGroup = new StudyGroup("New Study Group");
             memberListModel.clear();
             updateCalendarGridMembers();
@@ -488,71 +554,109 @@ public class MainFrame extends JFrame {
     }
 
     private void openSchedule() {
-        // This would be implemented with file handling
-        JOptionPane.showMessageDialog(this,
-                "Open schedule functionality will be implemented in a future version",
-                "Not Implemented", JOptionPane.INFORMATION_MESSAGE);
-    }
+        try {
+            // Show loading dialog
+            JDialog loadingDialog = new JDialog(this, "Loading", true);
+            JLabel loadingLabel = new JLabel("Loading schedule data...", SwingConstants.CENTER);
+            loadingDialog.add(loadingLabel);
+            loadingDialog.setSize(200, 100);
+            loadingDialog.setLocationRelativeTo(this);
 
-    private void saveSchedule() {
-        // This would be implemented with file handling
-        JOptionPane.showMessageDialog(this,
-                "Save schedule functionality will be implemented in a future version",
-                "Not Implemented", JOptionPane.INFORMATION_MESSAGE);
-    }
+            // Create a worker thread to load data
+            SwingWorker<StudyGroup, Void> worker = new SwingWorker<StudyGroup, Void>() {
+                @Override
+                protected StudyGroup doInBackground() throws Exception {
+                    return dataManager.loadStudyGroup();
+                }
 
-    private void showPreferencesDialog() {
-        JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
+                @Override
+                protected void done() {
+                    loadingDialog.dispose();
+                    try {
+                        StudyGroup loadedGroup = get();
 
-        SpinnerNumberModel startModel = new SpinnerNumberModel(8, 0, 23, 1);
-        SpinnerNumberModel endModel = new SpinnerNumberModel(22, 1, 24, 1);
-        SpinnerNumberModel minModel = new SpinnerNumberModel(0, 0, 100, 1);
+                        // Update the UI with loaded data
+                        studyGroup = loadedGroup;
+                        loadMembersIntoUI();
 
-        JSpinner startTimeSpinner = new JSpinner(startModel);
-        JSpinner endTimeSpinner = new JSpinner(endModel);
-        JSpinner minMembersSpinner = new JSpinner(minModel);
+                        // Update calendar with loaded schedules
+                        List<TimeSlot> timeSlots = studyGroup.getTimeSlots();
+                        for (TimeSlot slot : timeSlots) {
+                            calendarGrid.addTimeSlot(slot);
+                        }
 
-        panel.add(new JLabel("Start Time (hour):"));
-        panel.add(startTimeSpinner);
-        panel.add(new JLabel("End Time (hour):"));
-        panel.add(endTimeSpinner);
-        panel.add(new JLabel("Minimum Members (0 = all):"));
-        panel.add(minMembersSpinner);
+                        statusBar.setMessage("Schedule loaded successfully - " +
+                            studyGroup.getMembers().size() + " members, " +
+                            timeSlots.size() + " time slots");
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Preferences",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                        JOptionPane.showMessageDialog(MainFrame.this,
+                            "Schedule loaded successfully!\n" +
+                            "Members: " + studyGroup.getMembers().size() + "\n" +
+                            "Time slots: " + timeSlots.size(),
+                            "Schedule Loaded", JOptionPane.INFORMATION_MESSAGE);
 
-        if (result == JOptionPane.OK_OPTION) {
-            int startHour = (int) startTimeSpinner.getValue();
-            int endHour = (int) endTimeSpinner.getValue();
-            int minMembers = (int) minMembersSpinner.getValue();
+                    } catch (Exception e) {
+                        JOptionPane.showMessageDialog(MainFrame.this,
+                            "Error loading schedule: " + e.getMessage(),
+                            "Load Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            };
 
-            if (startHour >= endHour) {
-                JOptionPane.showMessageDialog(this,
-                        "Start time must be earlier than end time",
-                        "Invalid Times", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+            worker.execute();
+            loadingDialog.setVisible(true);
 
-            studyGroup.setDefaultStartTime(LocalTime.of(startHour, 0));
-            studyGroup.setDefaultEndTime(LocalTime.of(endHour, 0));
-            studyGroup.setMinimumMembersRequired(minMembers);
-
-            // Note: Calendar grid now uses fixed time ranges (8 AM-2 PM and 8 PM-1 AM)
-            // Time range preferences are stored in the study group for other purposes
-
-            statusBar.setMessage("Preferences updated");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Error opening schedule: " + e.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void showAboutDialog() {
-        JOptionPane.showMessageDialog(this,
-                "Study Squad Synchronizer\n" +
-                "Version 1.0\n\n" +
-                "A tool to help study groups find common meeting times.\n" +
-                "© 2025 Bangladesh University of Professionals",
-                "About Study Squad Synchronizer",
-                JOptionPane.INFORMATION_MESSAGE);
+    private void saveSchedule() {
+        try {
+            // Show saving dialog
+            JDialog savingDialog = new JDialog(this, "Saving", true);
+            JLabel savingLabel = new JLabel("Saving schedule data...", SwingConstants.CENTER);
+            savingDialog.add(savingLabel);
+            savingDialog.setSize(200, 100);
+            savingDialog.setLocationRelativeTo(this);
+
+            // Create a worker thread to save data
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    dataManager.saveStudyGroup(studyGroup);
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    savingDialog.dispose();
+                    try {
+                        get(); // This will throw an exception if saving failed
+
+                        statusBar.setMessage("Schedule saved successfully");
+                        JOptionPane.showMessageDialog(MainFrame.this,
+                            "Schedule saved successfully!",
+                            "Save Complete", JOptionPane.INFORMATION_MESSAGE);
+
+                    } catch (Exception e) {
+                        JOptionPane.showMessageDialog(MainFrame.this,
+                            "Error saving schedule: " + e.getMessage(),
+                            "Save Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            };
+
+            worker.execute();
+            savingDialog.setVisible(true);
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Error saving schedule: " + e.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
@@ -969,8 +1073,8 @@ public class MainFrame extends JFrame {
                 LocalDateTime endDateTime = startDateTime.plusMinutes(duration);
                 TimeSlot newSlot = new TimeSlot(startDateTime, endDateTime);
 
-                // Add to study group
-                studyGroup.addTimeSlot(newSlot);
+                // Save schedule using DataManager
+                dataManager.saveSchedule(newSlot, studyGroup);
 
                 // Update calendar grid
                 calendarGrid.addTimeSlot(newSlot);
@@ -982,5 +1086,373 @@ public class MainFrame extends JFrame {
                         "Input Error", JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    /**
+     * Shows the groups overview dialog.
+     */
+    private void showGroupsDialog() {
+        if (studyGroup.getMembers().isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No members in the study group.",
+                    "No Members", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        Map<String, Integer> groupStats = studyGroup.getGroupStatistics();
+
+        if (groupStats.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No groups have been created yet.",
+                    "No Groups", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Create a panel to display group statistics
+        JPanel panel = new JPanel(new BorderLayout());
+
+        // Create table data for groups
+        String[] columnNames = {"Group Name", "Members", "Details"};
+        Object[][] data = new Object[groupStats.size()][3];
+
+        int row = 0;
+        for (Map.Entry<String, Integer> entry : groupStats.entrySet()) {
+            String groupName = entry.getKey();
+            int memberCount = entry.getValue();
+
+            data[row][0] = groupName;
+            data[row][1] = memberCount;
+
+            // Get member names for this group
+            List<Member> groupMembers;
+            if ("Ungrouped".equals(groupName)) {
+                groupMembers = studyGroup.getUngroupedMembers();
+            } else {
+                groupMembers = studyGroup.getMembersByGroup(groupName);
+            }
+
+            StringBuilder memberNames = new StringBuilder();
+            for (int i = 0; i < groupMembers.size(); i++) {
+                memberNames.append(groupMembers.get(i).getName());
+                if (i < groupMembers.size() - 1) {
+                    memberNames.append(", ");
+                }
+            }
+            data[row][2] = memberNames.toString();
+            row++;
+        }
+
+        JTable table = new JTable(data, columnNames);
+        table.setRowHeight(25);
+        table.getColumnModel().getColumn(2).setPreferredWidth(200);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setPreferredSize(new Dimension(500, 200));
+
+        panel.add(new JLabel("Group Overview:"), BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        JOptionPane.showMessageDialog(this, panel, "Groups Overview", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Shows the group management dialog.
+     */
+    private void showManageGroupsDialog() {
+        if (studyGroup.getMembers().isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No members in the study group.",
+                    "No Members", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(this, "Manage Groups", true);
+        dialog.setSize(600, 400);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+
+        // Create member list with group information
+        DefaultListModel<String> listModel = new DefaultListModel<>();
+        for (Member member : studyGroup.getMembers()) {
+            String displayText = member.getName() + " (" + member.getEmail() + ")";
+            if (member.hasGroup()) {
+                displayText += " - Group: " + member.getGroup();
+            } else {
+                displayText += " - No Group";
+            }
+            listModel.addElement(displayText);
+        }
+
+        JList<String> memberList = new JList<>(listModel);
+        memberList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane scrollPane = new JScrollPane(memberList);
+
+        // Action buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JButton assignButton = new JButton("Assign to Group");
+        JButton removeFromGroupButton = new JButton("Remove from Group");
+        JButton disbandGroupButton = new JButton("Disband Group");
+        JButton closeButton = new JButton("Close");
+
+        assignButton.addActionListener(e -> {
+            int selectedIndex = memberList.getSelectedIndex();
+            if (selectedIndex >= 0) {
+                Member selectedMember = studyGroup.getMembers().get(selectedIndex);
+                showAssignToGroupDialog(selectedMember, listModel, selectedIndex);
+            } else {
+                JOptionPane.showMessageDialog(dialog, "Please select a member first.",
+                    "No Selection", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        removeFromGroupButton.addActionListener(e -> {
+            int selectedIndex = memberList.getSelectedIndex();
+            if (selectedIndex >= 0) {
+                Member selectedMember = studyGroup.getMembers().get(selectedIndex);
+                if (selectedMember.hasGroup()) {
+                    selectedMember.setGroup(null);
+                    dataManager.saveStudyGroup(studyGroup);
+
+                    // Update list display
+                    String displayText = selectedMember.getName() + " (" + selectedMember.getEmail() + ") - No Group";
+                    listModel.setElementAt(displayText, selectedIndex);
+
+                    // Update main member list
+                    memberList.repaint();
+                    statusBar.setMessage("Removed " + selectedMember.getName() + " from group");
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "Member is not in any group.",
+                        "Not in Group", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(dialog, "Please select a member first.",
+                    "No Selection", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        disbandGroupButton.addActionListener(e -> {
+            Set<String> groups = studyGroup.getAllGroups();
+            if (groups.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "No groups to disband.",
+                    "No Groups", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            String[] groupArray = groups.toArray(new String[0]);
+            String selectedGroup = (String) JOptionPane.showInputDialog(dialog,
+                "Select group to disband:", "Disband Group",
+                JOptionPane.QUESTION_MESSAGE, null, groupArray, groupArray[0]);
+
+            if (selectedGroup != null) {
+                int confirm = JOptionPane.showConfirmDialog(dialog,
+                    "Are you sure you want to disband the group '" + selectedGroup + "'?\n" +
+                    "All members will be removed from this group.",
+                    "Confirm Disband", JOptionPane.YES_NO_OPTION);
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    int removedCount = studyGroup.disbandGroup(selectedGroup);
+                    dataManager.saveStudyGroup(studyGroup);
+
+                    // Refresh the list
+                    listModel.clear();
+                    for (Member member : studyGroup.getMembers()) {
+                        String displayText = member.getName() + " (" + member.getEmail() + ")";
+                        if (member.hasGroup()) {
+                            displayText += " - Group: " + member.getGroup();
+                        } else {
+                            displayText += " - No Group";
+                        }
+                        listModel.addElement(displayText);
+                    }
+
+                    // Update main member list
+                    loadMembersIntoUI();
+                    statusBar.setMessage("Disbanded group '" + selectedGroup + "' - " + removedCount + " members affected");
+                }
+            }
+        });
+
+        closeButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(assignButton);
+        buttonPanel.add(removeFromGroupButton);
+        buttonPanel.add(disbandGroupButton);
+        buttonPanel.add(closeButton);
+
+        mainPanel.add(new JLabel("Members and their groups:"), BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * Shows dialog to assign a member to a group.
+     */
+    private void showAssignToGroupDialog(Member member, DefaultListModel<String> listModel, int selectedIndex) {
+        Set<String> existingGroups = studyGroup.getAllGroups();
+        List<String> groupOptions = new ArrayList<>(existingGroups);
+        groupOptions.add(0, "[Create New Group]");
+
+        String[] groupArray = groupOptions.toArray(new String[0]);
+        String selectedGroup = (String) JOptionPane.showInputDialog(this,
+            "Select group for " + member.getName() + ":", "Assign to Group",
+            JOptionPane.QUESTION_MESSAGE, null, groupArray, groupArray[0]);
+
+        if (selectedGroup != null) {
+            String finalGroup;
+            if ("[Create New Group]".equals(selectedGroup)) {
+                finalGroup = JOptionPane.showInputDialog(this, "Enter new group name:", "New Group",
+                    JOptionPane.QUESTION_MESSAGE);
+                if (finalGroup == null || finalGroup.trim().isEmpty()) {
+                    return;
+                }
+                finalGroup = finalGroup.trim();
+            } else {
+                finalGroup = selectedGroup;
+            }
+
+            member.setGroup(finalGroup);
+            dataManager.saveStudyGroup(studyGroup);
+
+            // Update list display
+            String displayText = member.getName() + " (" + member.getEmail() + ") - Group: " + finalGroup;
+            listModel.setElementAt(displayText, selectedIndex);
+
+            // Update main member list
+            loadMembersIntoUI();
+            statusBar.setMessage("Assigned " + member.getName() + " to group '" + finalGroup + "'");
+        }
+    }
+
+    /**
+     * Shows dialog to find common slots for a specific group.
+     */
+    private void showFindGroupSlotsDialog() {
+        Set<String> groups = studyGroup.getAllGroups();
+        if (groups.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No groups have been created yet.",
+                    "No Groups", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String[] groupArray = groups.toArray(new String[0]);
+        String selectedGroup = (String) JOptionPane.showInputDialog(this,
+            "Select group to find common slots for:", "Find Group Common Slots",
+            JOptionPane.QUESTION_MESSAGE, null, groupArray, groupArray[0]);
+
+        if (selectedGroup != null) {
+            List<Member> groupMembers = studyGroup.getMembersByGroup(selectedGroup);
+
+            if (groupMembers.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "No members found in group '" + selectedGroup + "'.",
+                        "No Members", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            // Find common slots for the group
+            LocalDate date = calendarGrid.getDate();
+            List<TimeSlot> commonSlots = studyGroup.findCommonTimeSlotsForGroup(selectedGroup, date, 30);
+
+            if (commonSlots.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "No common time slots found for group '" + selectedGroup + "' on " + date + ".\n" +
+                        "Group members: " + groupMembers.size(),
+                        "No Common Slots", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                // Display the common slots
+                StringBuilder slotsText = new StringBuilder();
+                slotsText.append("Common time slots for group '").append(selectedGroup).append("' on ").append(date).append(":\n\n");
+                slotsText.append("Group members (").append(groupMembers.size()).append("): ");
+                for (int i = 0; i < groupMembers.size(); i++) {
+                    slotsText.append(groupMembers.get(i).getName());
+                    if (i < groupMembers.size() - 1) {
+                        slotsText.append(", ");
+                    }
+                }
+                slotsText.append("\n\nCommon slots:\n");
+
+                for (TimeSlot slot : commonSlots) {
+                    slotsText.append("• ").append(slot.getStartTime().toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")))
+                            .append(" - ").append(slot.getEndTime().toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")))
+                            .append("\n");
+                }
+
+                JTextArea textArea = new JTextArea(slotsText.toString());
+                textArea.setEditable(false);
+                textArea.setLineWrap(true);
+                textArea.setWrapStyleWord(true);
+
+                JScrollPane scrollPane = new JScrollPane(textArea);
+                scrollPane.setPreferredSize(new Dimension(400, 300));
+
+                JOptionPane.showMessageDialog(this, scrollPane, "Group Common Slots", JOptionPane.INFORMATION_MESSAGE);
+            }
+
+            statusBar.setMessage("Found " + commonSlots.size() + " common slots for group '" + selectedGroup + "'");
+        }
+    }
+
+    private void showPreferencesDialog() {
+        JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
+
+        SpinnerNumberModel startModel = new SpinnerNumberModel(8, 0, 23, 1);
+        SpinnerNumberModel endModel = new SpinnerNumberModel(22, 1, 24, 1);
+        SpinnerNumberModel minModel = new SpinnerNumberModel(0, 0, 100, 1);
+
+        JSpinner startTimeSpinner = new JSpinner(startModel);
+        JSpinner endTimeSpinner = new JSpinner(endModel);
+        JSpinner minMembersSpinner = new JSpinner(minModel);
+
+        panel.add(new JLabel("Start Time (hour):"));
+        panel.add(startTimeSpinner);
+        panel.add(new JLabel("End Time (hour):"));
+        panel.add(endTimeSpinner);
+        panel.add(new JLabel("Minimum Members (0 = all):"));
+        panel.add(minMembersSpinner);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Preferences",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            int startHour = (int) startTimeSpinner.getValue();
+            int endHour = (int) endTimeSpinner.getValue();
+            int minMembers = (int) minMembersSpinner.getValue();
+
+            if (startHour >= endHour) {
+                JOptionPane.showMessageDialog(this,
+                        "Start time must be earlier than end time",
+                        "Invalid Times", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            studyGroup.setDefaultStartTime(LocalTime.of(startHour, 0));
+            studyGroup.setDefaultEndTime(LocalTime.of(endHour, 0));
+            studyGroup.setMinimumMembersRequired(minMembers);
+
+            // Save preferences
+            dataManager.saveStudyGroup(studyGroup);
+
+            statusBar.setMessage("Preferences updated");
+        }
+    }
+
+    private void showAboutDialog() {
+        JOptionPane.showMessageDialog(this,
+                "Study Squad Synchronizer\n" +
+                "Version 2.0\n\n" +
+                "A tool to help study groups find common meeting times.\n" +
+                "Features:\n" +
+                "• Persistent data storage\n" +
+                "• Group management system\n" +
+                "• Schedule synchronization\n" +
+                "• Email notifications\n\n" +
+                "© 2025 Bangladesh University of Professionals",
+                "About Study Squad Synchronizer",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 }

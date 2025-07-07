@@ -240,10 +240,19 @@ public class StudyGroup {
     }
 
     /**
-     * Adds a time slot to the study group schedule.
+     * Gets all time slots associated with this study group.
+     *
+     * @return A list of time slots
+     */
+    public List<TimeSlot> getTimeSlots() {
+        return new ArrayList<>(timeSlots);
+    }
+
+    /**
+     * Adds a time slot to the study group.
      *
      * @param timeSlot The time slot to add
-     * @return true if the time slot was added successfully
+     * @return true if the time slot was added, false if it already exists
      */
     public boolean addTimeSlot(TimeSlot timeSlot) {
         if (!timeSlots.contains(timeSlot)) {
@@ -253,21 +262,132 @@ public class StudyGroup {
     }
 
     /**
-     * Removes a time slot from the study group schedule.
+     * Removes a time slot from the study group.
      *
      * @param timeSlot The time slot to remove
-     * @return true if the time slot was removed successfully
+     * @return true if the time slot was removed, false otherwise
      */
     public boolean removeTimeSlot(TimeSlot timeSlot) {
         return timeSlots.remove(timeSlot);
     }
 
     /**
-     * Gets all scheduled time slots for this study group.
+     * Gets all unique groups that members belong to.
      *
-     * @return A list of scheduled time slots
+     * @return A set of group names
      */
-    public List<TimeSlot> getTimeSlots() {
-        return new ArrayList<>(timeSlots);
+    public Set<String> getAllGroups() {
+        return members.stream()
+                .filter(Member::hasGroup)
+                .map(Member::getGroup)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets members belonging to a specific group.
+     *
+     * @param groupName The name of the group
+     * @return A list of members in the specified group
+     */
+    public List<Member> getMembersByGroup(String groupName) {
+        return members.stream()
+                .filter(member -> member.belongsToGroup(groupName))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets members who are not assigned to any group.
+     *
+     * @return A list of members without group assignments
+     */
+    public List<Member> getUngroupedMembers() {
+        return members.stream()
+                .filter(member -> !member.hasGroup())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Finds common time slots for members of a specific group.
+     *
+     * @param groupName The name of the group
+     * @param date The date to find common time slots for
+     * @param slotDurationMinutes The duration of each time slot in minutes
+     * @return A list of common available time slots for the group
+     */
+    public List<TimeSlot> findCommonTimeSlotsForGroup(String groupName, LocalDate date, int slotDurationMinutes) {
+        List<Member> groupMembers = getMembersByGroup(groupName);
+        if (groupMembers.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Create a temporary study group with only the group members
+        StudyGroup tempGroup = new StudyGroup("Temp Group");
+        tempGroup.setDefaultStartTime(this.defaultStartTime);
+        tempGroup.setDefaultEndTime(this.defaultEndTime);
+        tempGroup.setMinimumMembersRequired(this.minimumMembersRequired);
+        tempGroup.setEmergencyScheduling(this.emergencyScheduling);
+
+        for (Member member : groupMembers) {
+            tempGroup.addMember(member);
+        }
+
+        return tempGroup.findCommonTimeSlots(date, slotDurationMinutes);
+    }
+
+    /**
+     * Gets statistics about group membership.
+     *
+     * @return A map of group names to member counts
+     */
+    public Map<String, Integer> getGroupStatistics() {
+        Map<String, Integer> stats = new HashMap<>();
+
+        for (Member member : members) {
+            if (member.hasGroup()) {
+                String group = member.getGroup();
+                stats.put(group, stats.getOrDefault(group, 0) + 1);
+            }
+        }
+
+        // Add ungrouped members count
+        int ungroupedCount = getUngroupedMembers().size();
+        if (ungroupedCount > 0) {
+            stats.put("Ungrouped", ungroupedCount);
+        }
+
+        return stats;
+    }
+
+    /**
+     * Moves a member from one group to another.
+     *
+     * @param member The member to move
+     * @param newGroup The new group name (can be null to remove from group)
+     * @return true if the member was successfully moved
+     */
+    public boolean moveMemberToGroup(Member member, String newGroup) {
+        if (!members.contains(member)) {
+            return false;
+        }
+
+        member.setGroup(newGroup);
+        return true;
+    }
+
+    /**
+     * Removes all members from a specific group.
+     *
+     * @param groupName The name of the group to disband
+     * @return The number of members that were removed from the group
+     */
+    public int disbandGroup(String groupName) {
+        int count = 0;
+        for (Member member : members) {
+            if (member.belongsToGroup(groupName)) {
+                member.setGroup(null);
+                count++;
+            }
+        }
+        return count;
     }
 }

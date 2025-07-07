@@ -5,97 +5,79 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import org.example.auth.AuthenticationService;
+import org.example.auth.SimpleAuthService;
 import org.example.view.LoginView;
 
 public class Main {
-    private static AuthenticationService authService;
+    private static SimpleAuthService authService;
 
     public static void main(String[] args) {
         System.out.println("Starting Study Squad Synchronizer application...");
 
-        // Initialize authentication service
-        authService = new AuthenticationService();
-        System.out.println("Authentication service initialized with default accounts:");
-        System.out.println("- Admin account: username='admin', password='admin123'");
-        System.out.println("- Student account: username='student', password='student123'");
+        try {
+            // Initialize simple authentication service (file-based, no database required)
+            authService = new SimpleAuthService();
 
-        // Set default exception handler to catch uncaught exceptions
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-            System.err.println("Uncaught exception in thread " + t.getName());
-            e.printStackTrace();
-            showErrorDialog(e);
-        });
+            // Debug: Print current working directory
+            System.out.println("Current working directory: " + System.getProperty("user.dir"));
+            System.out.println("Java version: " + System.getProperty("java.version"));
 
-        SwingUtilities.invokeLater(() -> {
-            try {
-                System.out.println("Showing splash screen...");
+            // Set default exception handler to catch uncaught exceptions
+            Thread.setDefaultUncaughtExceptionHandler(Main::handleUncaughtException);
 
-                // Show splash screen
-                SplashScreen splashScreen = new SplashScreen();
-                splashScreen.setVisible(true);
+            // Use Swing Event Dispatch Thread for UI operations
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    // Show login view
+                    LoginView loginView = new LoginView(authService);
+                    loginView.setVisible(true);
 
-                // Create one-time timer that fires only once
-                Timer timer = new Timer(2000, null);
-                timer.setRepeats(false); // Important: prevent repeated firing
-
-                // Add action listener to handle timer event
-                timer.addActionListener(e -> {
-                    splashScreen.dispose();
-                    System.out.println("Splash screen closed, showing login view...");
-
-                    try {
-                        // Show login view
-                        LoginView loginView = new LoginView(authService);
-                        loginView.setOnLoginSuccess(() -> {
-                            System.out.println("Login successful, showing main application...");
-
-                            // Create and show MainFrame on the Event Dispatch Thread
-                            SwingUtilities.invokeLater(() -> {
-                                try {
-                                    System.out.println("Creating MainFrame instance...");
-                                    MainFrame mainFrame = new MainFrame(authService);
-                                    System.out.println("MainFrame created, making it visible...");
-                                    mainFrame.setVisible(true);
-                                    System.out.println("MainFrame should now be visible");
-                                } catch (Throwable ex) {
-                                    System.err.println("ERROR creating or showing MainFrame:");
-                                    ex.printStackTrace();
-                                    showErrorDialog(ex);
-                                }
-                            });
+                    // Set action to perform on successful login
+                    loginView.setOnLoginSuccess(() -> {
+                        // After successful login, show main application window
+                        SwingUtilities.invokeLater(() -> {
+                            new MainFrame(authService).setVisible(true);
                         });
-                        loginView.setVisible(true);
-                    } catch (Throwable ex) {
-                        System.err.println("ERROR in timer callback:");
-                        ex.printStackTrace();
-                        showErrorDialog(ex);
-                    }
-                });
-
-                // Start the timer
-                timer.start();
-            } catch (Throwable ex) {
-                System.err.println("ERROR in GUI initialization:");
-                ex.printStackTrace();
-                showErrorDialog(ex);
-            }
-        });
+                    });
+                } catch (Exception e) {
+                    handleException("Error starting application UI", e);
+                }
+            });
+        } catch (Exception e) {
+            handleException("Error initializing application", e);
+        }
     }
 
     /**
-     * Shows an error dialog with exception details
+     * Handles uncaught exceptions in any thread
      */
-    private static void showErrorDialog(Throwable e) {
+    private static void handleUncaughtException(Thread t, Throwable e) {
+        handleException("Uncaught exception in thread " + t.getName(), e);
+    }
+
+    /**
+     * Handles exceptions with proper logging and user notification
+     */
+    private static void handleException(String message, Throwable e) {
+        // Print stack trace to console for developers
+        System.err.println(message);
+        e.printStackTrace();
+
+        // Show error to user
         StringWriter sw = new StringWriter();
-        e.printStackTrace(new PrintWriter(sw));
-        String stackTrace = sw.toString();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
 
-        String message = "An error occurred: " + e.getMessage() +
-                         "\n\nPlease report this error to the developers." +
-                         "\n\nStack trace (for developers):\n" + stackTrace.substring(0, Math.min(stackTrace.length(), 500)) + "...";
+        String errorDetails = sw.toString();
+        System.err.println("Error details: " + errorDetails);
 
-        JOptionPane.showMessageDialog(null, message,
-                                     "Application Error", JOptionPane.ERROR_MESSAGE);
+        // Show error dialog on event dispatch thread
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(null,
+                    message + ":\n" + e.getMessage() +
+                    "\nPlease check the console for more details.",
+                    "Application Error",
+                    JOptionPane.ERROR_MESSAGE);
+        });
     }
 }

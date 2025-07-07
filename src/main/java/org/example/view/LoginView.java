@@ -1,6 +1,6 @@
 package org.example.view;
 
-import org.example.auth.AuthenticationService;
+import org.example.auth.SimpleAuthService;
 import org.example.auth.UserAccount;
 
 import javax.swing.*;
@@ -8,7 +8,7 @@ import java.awt.*;
 import java.awt.event.*;
 
 /**
- * Login form for user authentication with OTP verification using email.
+ * Login form for user authentication using simple file-based authentication.
  */
 public class LoginView extends JFrame {
     private JTextField emailField;
@@ -17,17 +17,17 @@ public class LoginView extends JFrame {
     private JButton registerButton;
     private JLabel statusLabel;
 
-    private final AuthenticationService authService;
+    private final SimpleAuthService authService;
     private Runnable onLoginSuccess;
+    private String currentUsername;
 
     /**
      * Creates a new login view with the specified authentication service.
      *
      * @param authService The authentication service to use for login
      */
-    public LoginView(AuthenticationService authService) {
+    public LoginView(SimpleAuthService authService) {
         this.authService = authService;
-
         initializeUI();
     }
 
@@ -142,7 +142,7 @@ public class LoginView extends JFrame {
 
     /**
      * Attempts to login with the credentials in the form.
-     * This will initiate the OTP verification process or direct login in fallback mode.
+     * First stage: Validate credentials and initiate OTP verification.
      */
     private void attemptLogin() {
         String email = emailField.getText().trim();
@@ -158,67 +158,322 @@ public class LoginView extends JFrame {
 
         // Disable login button to prevent multiple attempts
         loginButton.setEnabled(false);
-        loginButton.setText("Logging in...");
+        loginButton.setText("Verifying...");
 
         SwingUtilities.invokeLater(() -> {
-            boolean loginResult = authService.initiateLogin(email, password);
+            try {
+                // First stage: validate credentials
+                boolean credentialsValid = authService.initiateLogin(email, password);
 
-            if (loginResult) {
-                // Check if we need OTP verification or if login is complete
-                if (authService.isLoggedIn()) {
-                    // Direct login successful (fallback mode or OTP skipped)
+                if (credentialsValid) {
+                    // Store the email as the username identifier for OTP verification
+                    // This is critical because SimpleAuthService uses email as the key for pending verifications
+                    currentUsername = email;
+
+                    System.out.println("DEBUG: Setting currentUsername to: " + currentUsername);
+
+                    // Show OTP verification dialog
+                    showOTPVerificationDialog();
+                } else {
+                    statusLabel.setText("Invalid email/username or password");
+                    statusLabel.setForeground(Color.RED);
+                    passwordField.setText("");
+
+                    // Re-enable login button
+                    loginButton.setEnabled(true);
+                    loginButton.setText("Login");
+                }
+            } catch (Exception ex) {
+                statusLabel.setText("Login error: " + ex.getMessage());
+                statusLabel.setForeground(Color.RED);
+                ex.printStackTrace();
+
+                // Re-enable login button
+                loginButton.setEnabled(true);
+                loginButton.setText("Login");
+            }
+        });
+    }
+
+    /**
+     * Shows the OTP verification dialog for the second stage of login.
+     */
+    private void showOTPVerificationDialog() {
+        String email = authService.getPendingVerificationEmail(currentUsername);
+
+        // Debug logging to help diagnose issues
+        System.out.println("DEBUG: Looking for pending verification with key: " + currentUsername);
+        System.out.println("DEBUG: Found email: " + email);
+
+        if (email == null) {
+            // Fallback: try using the current username directly as email
+            if (currentUsername != null && currentUsername.contains("@")) {
+                email = currentUsername;
+                System.out.println("DEBUG: Using fallback email: " + email);
+            } else {
+                statusLabel.setText("Error: No pending verification found for " + currentUsername);
+                statusLabel.setForeground(Color.RED);
+                loginButton.setEnabled(true);
+                loginButton.setText("Login");
+                return;
+            }
+        }
+
+        // Create custom OTP verification dialog
+        JDialog otpDialog = new JDialog(this, "OTP Verification", true);
+        otpDialog.setLayout(new BorderLayout(10, 10));
+        otpDialog.setSize(450, 300);
+        otpDialog.setLocationRelativeTo(this);
+
+        // Ensure dialog appears on top
+        otpDialog.setAlwaysOnTop(true);
+        otpDialog.toFront();
+
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        // Create instruction panel
+        JPanel instructionPanel = new JPanel(new GridLayout(3, 1, 5, 5));
+        JLabel emailLabel = new JLabel("Email: " + email);
+        emailLabel.setFont(new Font("Arial", Font.BOLD, 12));
+
+        JLabel instructionLabel = new JLabel("<html>Please enter the OTP code sent to your email.<br>" +
+                                         "Check your email inbox or console output for the code.</html>");
+        instructionLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+
+        JLabel tipLabel = new JLabel("<html><i>Tip: The OTP code is also displayed in the console for testing purposes.</i></html>");
+        tipLabel.setFont(new Font("Arial", Font.ITALIC, 10));
+        tipLabel.setForeground(Color.GRAY);
+
+        instructionPanel.add(emailLabel);
+        instructionPanel.add(instructionLabel);
+        instructionPanel.add(tipLabel);
+
+        // Create OTP input panel
+        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JTextField otpField = new JTextField(10);
+        otpField.setFont(new Font("Arial", Font.BOLD, 16));
+        otpField.setHorizontalAlignment(JTextField.CENTER);
+
+        // Add document filter to only allow numbers and limit to 6 digits
+        otpField.setDocument(new javax.swing.text.PlainDocument() {
+            @Override
+            public void insertString(int offs, String str, javax.swing.text.AttributeSet a)
+                    throws javax.swing.text.BadLocationException {
+                if (str == null) return;
+                if ((getLength() + str.length()) <= 6 && str.matches("\\d*")) {
+                    super.insertString(offs, str, a);
+                }
+            }
+        });
+
+        inputPanel.add(new JLabel("OTP Code: "));
+        inputPanel.add(otpField);
+
+        // Create status label
+        JLabel otpStatusLabel = new JLabel(" ");
+        otpStatusLabel.setHorizontalAlignment(JLabel.CENTER);
+        otpStatusLabel.setFont(new Font("Arial", Font.BOLD, 12));
+
+        // Create button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton cancelButton = new JButton("Cancel");
+        JButton verifyButton = new JButton("Verify");
+        verifyButton.setBackground(new Color(70, 130, 180));
+        verifyButton.setForeground(Color.WHITE);
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(verifyButton);
+
+        // Add components to main panel
+        mainPanel.add(instructionPanel, BorderLayout.NORTH);
+        mainPanel.add(inputPanel, BorderLayout.CENTER);
+        mainPanel.add(otpStatusLabel, BorderLayout.SOUTH);
+
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(otpStatusLabel, BorderLayout.CENTER);
+        bottomPanel.add(buttonPanel, BorderLayout.SOUTH);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+
+        otpDialog.setContentPane(mainPanel);
+
+        // Set up button actions
+        cancelButton.addActionListener(e -> {
+            otpDialog.dispose();
+            loginButton.setEnabled(true);
+            loginButton.setText("Login");
+        });
+
+        final String finalEmail = email; // For use in lambda
+        verifyButton.addActionListener(e -> {
+            String otpCode = otpField.getText().trim();
+            if (otpCode.isEmpty()) {
+                otpStatusLabel.setText("Please enter the OTP code");
+                otpStatusLabel.setForeground(Color.RED);
+                return;
+            }
+
+            if (otpCode.length() != 6) {
+                otpStatusLabel.setText("OTP must be 6 digits");
+                otpStatusLabel.setForeground(Color.RED);
+                return;
+            }
+
+            // Disable verify button
+            verifyButton.setEnabled(false);
+            verifyButton.setText("Verifying...");
+
+            // Verify OTP - try with currentUsername first, then with email
+            boolean otpVerified = authService.completeLogin(currentUsername, otpCode);
+
+            if (!otpVerified && !currentUsername.equals(finalEmail)) {
+                // Try with email if username verification failed
+                otpVerified = authService.completeLogin(finalEmail, otpCode);
+            }
+
+            if (otpVerified) {
+                otpStatusLabel.setText("OTP verified successfully!");
+                otpStatusLabel.setForeground(new Color(0, 128, 0));
+
+                // Close dialog after a short delay
+                Timer timer = new Timer(1500, ev -> {
+                    otpDialog.dispose();
+
+                    // Successful login - run success callback
                     statusLabel.setText("Login successful!");
+                    statusLabel.setForeground(new Color(0, 128, 0));
                     dispose(); // Close login window
 
                     if (onLoginSuccess != null) {
                         onLoginSuccess.run();
                     }
-                } else if (authService.hasPendingVerification(email)) {
-                    // OTP verification needed
-                    String userEmail = authService.getPendingVerificationEmail(email);
-
-                    if (userEmail != null) {
-                        // Show OTP verification dialog
-                        OTPVerificationDialog otpDialog = new OTPVerificationDialog(
-                            this, authService, email, userEmail);
-                        otpDialog.setVisible(true);
-
-                        // Check if login was successful after OTP verification
-                        if (otpDialog.isVerified() && authService.isLoggedIn()) {
-                            statusLabel.setText("Login successful!");
-                            dispose(); // Close login window
-
-                            if (onLoginSuccess != null) {
-                                onLoginSuccess.run();
-                            }
-                        } else {
-                            statusLabel.setText("Login cancelled or failed");
-                        }
-                    } else {
-                        statusLabel.setText("Email not found for user");
-                    }
-                }
+                });
+                timer.setRepeats(false);
+                timer.start();
             } else {
-                statusLabel.setText("Invalid email or password");
-                passwordField.setText("");
+                otpStatusLabel.setText("Invalid OTP code. Please try again.");
+                otpStatusLabel.setForeground(Color.RED);
+                verifyButton.setEnabled(true);
+                verifyButton.setText("Verify");
+                otpField.selectAll(); // Select all text for easy replacement
             }
-
-            // Re-enable login button
-            loginButton.setEnabled(true);
-            loginButton.setText("Login");
         });
+
+        // Allow Enter key to verify OTP
+        otpField.addActionListener(e -> verifyButton.doClick());
+
+        // Set default button and focus
+        otpDialog.getRootPane().setDefaultButton(verifyButton);
+
+        // Show dialog and ensure it gets focus
+        otpDialog.setVisible(true);
+        otpField.requestFocusInWindow();
     }
 
     /**
      * Shows the registration dialog for creating new accounts.
      */
     private void showRegistrationDialog() {
-        RegistrationView registrationView = new RegistrationView(authService);
-        registrationView.setOnRegistrationSuccess(() -> {
-            statusLabel.setText("Registration successful! You can now login.");
-            statusLabel.setForeground(new Color(0, 128, 0));
-        });
-        registrationView.showRegistrationForm();
+        JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
+        JTextField usernameField = new JTextField();
+        JTextField emailField = new JTextField();
+        JPasswordField passwordField = new JPasswordField();
+        JPasswordField confirmPasswordField = new JPasswordField();
+
+        panel.add(new JLabel("Username:"));
+        panel.add(usernameField);
+        panel.add(new JLabel("Email:"));
+        panel.add(emailField);
+        panel.add(new JLabel("Password:"));
+        panel.add(passwordField);
+        panel.add(new JLabel("Confirm Password:"));
+        panel.add(confirmPasswordField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Register New User",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String username = usernameField.getText().trim();
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
+
+            // Validation
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "All fields are required", "Registration Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!password.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(this, "Passwords do not match", "Registration Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                JOptionPane.showMessageDialog(this, "Please enter a valid email address", "Registration Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            boolean success = authService.register(username, email, password);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Registration successful! You can now login.", "Registration Complete", JOptionPane.INFORMATION_MESSAGE);
+                statusLabel.setText("Registration successful! You can now login.");
+                statusLabel.setForeground(new Color(0, 128, 0));
+            } else {
+                JOptionPane.showMessageDialog(this, "Registration failed. Username or email may already exist.", "Registration Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * Shows a simplified password recovery dialog.
+     */
+    private void showForgotPasswordDialog() {
+        JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
+        JTextField emailField = new JTextField();
+        JPasswordField newPasswordField = new JPasswordField();
+        JPasswordField confirmPasswordField = new JPasswordField();
+
+        panel.add(new JLabel("Email:"));
+        panel.add(emailField);
+        panel.add(new JLabel("New Password:"));
+        panel.add(newPasswordField);
+        panel.add(new JLabel("Confirm Password:"));
+        panel.add(confirmPasswordField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Reset Password",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String email = emailField.getText().trim();
+            String newPassword = new String(newPasswordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
+
+            if (email.isEmpty() || newPassword.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Email and password are required", "Reset Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!newPassword.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(this, "Passwords do not match", "Reset Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Implement actual password reset functionality
+            boolean resetSuccess = authService.resetPassword(email, newPassword);
+
+            if (resetSuccess) {
+                JOptionPane.showMessageDialog(this,
+                        "Password has been reset successfully. You can now login with your new password.",
+                        "Password Reset Successful", JOptionPane.INFORMATION_MESSAGE);
+                statusLabel.setText("Password reset successful! You can now login.");
+                statusLabel.setForeground(new Color(0, 128, 0));
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Password reset failed. Please verify that the email is registered in the system.",
+                        "Reset Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     /**
@@ -229,206 +484,5 @@ public class LoginView extends JFrame {
      */
     private boolean isValidEmail(String email) {
         return email.contains("@") && email.contains(".") && email.length() > 5;
-    }
-
-    /**
-     * Shows a dialog for password recovery with improved UI and no character limitations.
-     */
-    private void showForgotPasswordDialog() {
-        // Create a more spacious dialog with better layout
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        // Header
-        JLabel headerLabel = new JLabel("Reset Your Password");
-        headerLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        mainPanel.add(headerLabel, BorderLayout.NORTH);
-
-        // Form panel with improved layout
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        // Email field with larger, more visible text field
-        gbc.gridx = 0; gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(new JLabel("Email Address:"), gbc);
-
-        gbc.gridx = 1; gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        JTextField emailField = new JTextField(25); // Wider field
-        emailField.setFont(new Font("Arial", Font.PLAIN, 14)); // Larger font
-        emailField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.GRAY, 1),
-            BorderFactory.createEmptyBorder(5, 8, 5, 8)
-        ));
-        formPanel.add(emailField, gbc);
-
-        // New password field
-        gbc.gridx = 0; gbc.gridy = 1;
-        gbc.weightx = 0.0;
-        formPanel.add(new JLabel("New Password:"), gbc);
-
-        gbc.gridx = 1; gbc.gridy = 1;
-        gbc.weightx = 1.0;
-        JPasswordField newPasswordField = new JPasswordField(25);
-        newPasswordField.setFont(new Font("Arial", Font.PLAIN, 14));
-        newPasswordField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.GRAY, 1),
-            BorderFactory.createEmptyBorder(5, 8, 5, 8)
-        ));
-        formPanel.add(newPasswordField, gbc);
-
-        // Confirm password field
-        gbc.gridx = 0; gbc.gridy = 2;
-        gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Confirm Password:"), gbc);
-
-        gbc.gridx = 1; gbc.gridy = 2;
-        gbc.weightx = 1.0;
-        JPasswordField confirmPasswordField = new JPasswordField(25);
-        confirmPasswordField.setFont(new Font("Arial", Font.PLAIN, 14));
-        confirmPasswordField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.GRAY, 1),
-            BorderFactory.createEmptyBorder(5, 8, 5, 8)
-        ));
-        formPanel.add(confirmPasswordField, gbc);
-
-        mainPanel.add(formPanel, BorderLayout.CENTER);
-
-        // Info panel
-        JPanel infoPanel = new JPanel(new BorderLayout());
-        JLabel infoLabel = new JLabel("<html><i>Enter your registered email address and choose a new password.<br/>No character limitations apply.</i></html>");
-        infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        infoLabel.setForeground(Color.GRAY);
-        infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        infoPanel.add(infoLabel, BorderLayout.CENTER);
-        mainPanel.add(infoPanel, BorderLayout.SOUTH);
-
-        // Create custom dialog
-        JDialog dialog = new JDialog(this, "Password Recovery", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.add(mainPanel, BorderLayout.CENTER);
-
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton cancelButton = new JButton("Cancel");
-        JButton resetButton = new JButton("Reset Password");
-        resetButton.setBackground(new Color(70, 130, 180));
-        resetButton.setForeground(Color.WHITE);
-
-        cancelButton.addActionListener(e -> dialog.dispose());
-        resetButton.addActionListener(e -> {
-            String email = emailField.getText().trim();
-            String newPassword = new String(newPasswordField.getPassword());
-            String confirmPassword = new String(confirmPasswordField.getPassword());
-
-            // Validation with improved error messages
-            if (email.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog,
-                        "Please enter your email address",
-                        "Email Required",
-                        JOptionPane.WARNING_MESSAGE);
-                emailField.requestFocus();
-                return;
-            }
-
-            if (newPassword.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog,
-                        "Please enter a new password",
-                        "Password Required",
-                        JOptionPane.WARNING_MESSAGE);
-                newPasswordField.requestFocus();
-                return;
-            }
-
-            if (!isValidEmail(email)) {
-                JOptionPane.showMessageDialog(dialog,
-                        "Please enter a valid email address",
-                        "Invalid Email",
-                        JOptionPane.WARNING_MESSAGE);
-                emailField.requestFocus();
-                return;
-            }
-
-            if (!newPassword.equals(confirmPassword)) {
-                JOptionPane.showMessageDialog(dialog,
-                        "Passwords do not match. Please try again.",
-                        "Password Mismatch",
-                        JOptionPane.WARNING_MESSAGE);
-                confirmPasswordField.requestFocus();
-                return;
-            }
-
-            // Remove the 6-character limitation - allow any length password
-            if (newPassword.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(dialog,
-                        "Password cannot be empty or contain only spaces",
-                        "Invalid Password",
-                        JOptionPane.WARNING_MESSAGE);
-                newPasswordField.requestFocus();
-                return;
-            }
-
-            // Show progress
-            resetButton.setEnabled(false);
-            resetButton.setText("Resetting...");
-
-            // Perform password reset in background
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    boolean success = authService.recoverPassword(email, newPassword);
-
-                    if (success) {
-                        JOptionPane.showMessageDialog(dialog,
-                                "Password reset successful!\n\nYou can now login with your new password.",
-                                "Password Reset Complete",
-                                JOptionPane.INFORMATION_MESSAGE);
-                        dialog.dispose();
-
-                        // Clear the login form and show success message
-                        emailField.setText("");
-                        passwordField.setText("");
-                        statusLabel.setText("Password reset successful! You can now login.");
-                        statusLabel.setForeground(new Color(0, 128, 0));
-
-                    } else {
-                        JOptionPane.showMessageDialog(dialog,
-                                "Password reset failed.\n\nPlease check that the email address is registered and try again.",
-                                "Password Reset Error",
-                                JOptionPane.ERROR_MESSAGE);
-                    }
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(dialog,
-                            "An error occurred during password reset:\n" + ex.getMessage(),
-                            "System Error",
-                            JOptionPane.ERROR_MESSAGE);
-                } finally {
-                    resetButton.setEnabled(true);
-                    resetButton.setText("Reset Password");
-                }
-            });
-        });
-
-        buttonPanel.add(cancelButton);
-        buttonPanel.add(resetButton);
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
-
-        // Set dialog properties
-        dialog.setSize(450, 350);
-        dialog.setLocationRelativeTo(this);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-
-        // Make email field focused by default
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowOpened(java.awt.event.WindowEvent e) {
-                emailField.requestFocus();
-            }
-        });
-
-        dialog.setVisible(true);
     }
 }

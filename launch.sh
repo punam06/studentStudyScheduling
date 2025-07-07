@@ -10,7 +10,7 @@ echo
 
 # Quick build and run
 echo "🚀 Building and launching application..."
-cd "/Users/punam/Desktop/Varsity/2-2/GUI Java Project/student_scheduling"
+cd "/Users/punam/Desktop/javaProject"
 
 # Build the project
 ./gradlew build --quiet
@@ -21,8 +21,8 @@ if [ $? -eq 0 ]; then
     echo "📱 Launching Student Scheduling System..."
     echo
     echo "📋 Login Information:"
-    echo "   Admin:   username='admin'   password='admin123'"
-    echo "   Student: username='student' password='student123'"
+    echo "   Admin:   email='admin@example.com'   password='admin123'"
+    echo "   Student: email='student@example.com' password='student123'"
     echo
     echo "💡 The application will automatically:"
     echo "   • Try to connect to MySQL database"

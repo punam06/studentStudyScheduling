@@ -1,27 +1,53 @@
 plugins {
+    id 'java'
     id 'application'
 }
 
 group = 'org.example'
 version = '1.0'
-
-application {
-    mainClass = 'org.example.Main' // Your full class name
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_17 // or 21
-    targetCompatibility = JavaVersion.VERSION_17
-}
+sourceCompatibility = '17'
+targetCompatibility = '17'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation 'com.googlecode.json-simple:json-simple:1.1.1'
-    implementation 'mysql:mysql-connector-java:8.0.33'
-    implementation 'com.sun.mail:javax.mail:1.6.2'
-    implementation 'org.mindrot:jbcrypt:0.4'
+    // Jackson JSON library for data persistence
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.15.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
+
+    // Database connectivity
     implementation 'com.zaxxer:HikariCP:5.0.1'
+    implementation 'org.postgresql:postgresql:42.6.0'
+
+    // Password hashing
+    implementation 'org.mindrot:jbcrypt:0.4'
+
+    // Email functionality
+    implementation 'javax.mail:javax.mail-api:1.6.2'
+    implementation 'com.sun.mail:javax.mail:1.6.2'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+}
+
+application {
+    mainClass = 'org.example.Main'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Create executable JAR
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.example.Main'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
