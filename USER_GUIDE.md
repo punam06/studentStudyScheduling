@@ -1,32 +1,35 @@
-c# Student Scheduling System - User Guide
+# Study Squad Synchronizer - User Guide
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
 2. [System Requirements](#system-requirements)
 3. [Installation Guide](#installation-guide)
-4. [User Authentication](#user-authentication)
-5. [Account Registration](#account-registration)
-6. [Main Interface](#main-interface)
-7. [Conflict-Free Scheduling](#conflict-free-scheduling)
-8. [Study Group Management](#study-group-management)
-9. [Email Notifications](#email-notifications)
-10. [Role-Based Features](#role-based-features)
-11. [Troubleshooting](#troubleshooting)
-12. [FAQ](#faq)
+4. [Authentication System](#authentication-system)
+5. [User Registration](#user-registration)
+6. [OTP Verification](#otp-verification)
+7. [Main Application Interface](#main-application-interface)
+8. [Schedule Management](#schedule-management)
+9. [Study Group Features](#study-group-features)
+10. [Email Notifications](#email-notifications)
+11. [Data Persistence](#data-persistence)
+12. [Role-Based Features](#role-based-features)
+13. [Troubleshooting](#troubleshooting)
+14. [FAQ](#faq)
 
 ---
 
 ## Getting Started
 
-### Welcome to Student Scheduling System
-This application helps study groups coordinate meeting times efficiently with conflict-free scheduling. The system supports Admin and Student roles, mandatory OTP authentication, and automatic email notifications.
+### Welcome to Study Squad Synchronizer
+This application helps study groups coordinate meeting times efficiently with enhanced security, persistent data storage, and email-based authentication. The system features automatic data saving, cross-session continuity, and mandatory OTP verification for all users.
 
 ### Key Benefits
-- **Enhanced Security**: Mandatory two-factor authentication with email verification for every login
-- **Conflict-Free Scheduling**: Automatic detection and prevention of overlapping time slots
-- **Role Management**: Separate registration and access for Students and Admins
-- **Email Integration**: Automatic meeting invitations, reminders, and OTP delivery
-- **Persistent Storage**: MySQL database ensures data is never lost
+- **Enhanced Security**: Email-based OTP verification for every login attempt
+- **Persistent Data**: All schedules, members, and user accounts save automatically between sessions
+- **No Re-registration**: Register once and your account is saved permanently
+- **Guaranteed OTP**: Verification dialog always appears when logging in
+- **Auto-Save**: All changes saved automatically - no manual saving required
+- **Cross-Platform**: Works on Windows, macOS, and Linux without database setup
 
 ---
 
@@ -34,327 +37,375 @@ This application helps study groups coordinate meeting times efficiently with co
 
 ### Minimum Requirements
 - **Operating System**: Windows 10, macOS 10.14, or Linux Ubuntu 18.04+
-- **Java Runtime**: Java 17 or higher
+- **Java Runtime**: Java 17 or higher (required)
 - **Memory**: 512 MB RAM minimum, 1 GB recommended
-- **Storage**: 100 MB free disk space
-- **Database**: MySQL 8.0 or MariaDB 10.5+
-- **Internet**: Required for email functionality (mandatory for OTP)
+- **Storage**: 50 MB free disk space for application and data files
+- **Internet**: Required for email-based OTP delivery
+- **Email**: Gmail account with App Password (for OTP functionality)
 
 ### Recommended Setup
 - **Java**: OpenJDK 17 or Oracle JDK 17+
-- **Database**: MySQL 8.0 with InnoDB engine
-- **Email**: Gmail account with App Password enabled
-- **Screen Resolution**: 1024x768 or higher
+- **Email**: Gmail account with 2FA enabled and App Password configured
+- **Screen Resolution**: 1024x768 or higher for optimal interface display
+- **Network**: Stable internet connection for reliable OTP delivery
 
 ---
 
 ## Installation Guide
 
 ### Step 1: Download and Setup
-1. Clone or download the project files
-2. Ensure Java 17+ is installed
-3. Set up MySQL database using the provided `database_setup.sql` script
-4. Configure email settings in `EmailService.java`
+1. Clone the repository or download the project files
+2. Ensure Java 17+ is installed on your system
+3. No database setup required - the application uses file-based storage
 
-### Step 2: Database Setup
-```bash
-mysql -u root -p < database_setup.sql
+### Step 2: Email Configuration (Required)
+Edit the email settings in `src/main/java/org/example/util/EmailService.java`:
+```java
+private static final String EMAIL_USERNAME = "your-email@gmail.com";
+private static final String EMAIL_PASSWORD = "your-app-password";
 ```
 
-### Step 3: Email Configuration
-Edit the email settings in `src/main/java/org/example/util/EmailService.java`:
-- Set your Gmail address
-- Set your App Password (not your regular password)
+**Important**: Use your Gmail App Password, not your regular password.
 
-### Step 4: Run the Application
+### Step 3: Run the Application
 ```bash
+# Build and run with Gradle
 ./gradlew build
 ./gradlew run
+
+# Or use the launch script
+./launch.sh
 ```
 
 ---
 
-## User Authentication
+## Authentication System
 
-### New Security Features
-The system now requires **mandatory OTP verification** for every login attempt. There are no bypass options - all users must verify their identity via email.
-
-### Login Process
-1. **Enter Credentials**: Provide username and password
-2. **Credential Verification**: System validates your credentials
-3. **OTP Delivery**: 6-digit OTP automatically sent to your registered email
-4. **OTP Verification**: Enter the OTP within 10 minutes
-5. **Access Granted**: System grants access after successful verification
-
-### Password Recovery (Enhanced)
-If you forget your password, you can easily reset it:
-
-1. **Click "Forgot Password"** on the login screen
-2. **Enter Email Address**: Use the large, visible email field (25 characters wide)
-3. **Set New Password**: Create any password you want (no character limitations)
-4. **Confirm Password**: Re-enter your new password to confirm
-5. **Email Verification**: System sends OTP to verify your identity
-6. **Complete Reset**: Your password is updated after verification
-
-**Enhanced Features**:
-- **Large Email Field**: 25-character wide field with clear borders and larger font
-- **No Password Restrictions**: Set passwords of any length - no minimum requirements
-- **Professional Interface**: Clean dialog with proper spacing and styling
-- **Auto-Focus**: Email field automatically selected when dialog opens
-- **Clear Guidance**: Helpful instructions throughout the process
-- **Progress Indication**: Shows "Resetting..." during password update
-- **Success Feedback**: Confirmation message and login form cleared after successful reset
-
-### Important Notes
-- **Email Required**: All accounts must have valid email addresses
-- **OTP Mandatory**: Every login requires OTP verification
-- **Time Limit**: OTP expires after 10 minutes
-- **Resend Option**: You can request a new OTP if needed
+### Enhanced Security Features
+The system now features **mandatory email-based OTP verification** for every login attempt. This ensures maximum security for all user accounts.
 
 ### Default Test Accounts
-For testing purposes (also require OTP):
-- **Admin**: username `admin`, password `admin123`, email `admin@example.com`
-- **Student**: username `student`, password `student123`, email `student@example.com`
+The application comes with pre-configured accounts for testing:
+
+- **Admin Account**: 
+  - Email: `admin@example.com`
+  - Password: `admin123`
+  - Features: Full system access, emergency scheduling, user management
+
+- **Student Account**:
+  - Email: `student@example.com`
+  - Password: `student123`
+  - Features: Standard scheduling, group participation
+
+### Login Process (Step-by-Step)
+1. **Start Application**: Launch the Study Squad Synchronizer
+2. **Enter Credentials**: 
+   - Email: Enter your registered email address
+   - Password: Enter your password
+3. **Click Login**: The system validates your credentials
+4. **OTP Generation**: A 6-digit code is automatically sent to your email
+5. **OTP Dialog Appears**: Verification window will always open after valid credentials
+6. **Enter OTP**: Type the 6-digit code from your email (or check console for testing)
+7. **Verification**: Click "Verify" to complete login
+8. **Access Granted**: Main application opens upon successful verification
+
+**Important Notes**:
+- The OTP verification dialog is guaranteed to appear with valid credentials
+- OTP codes expire after 10 minutes
+- For testing, OTP codes are also displayed in the console output
+- You can use the Enter key to verify the OTP instead of clicking the button
 
 ---
 
-## Account Registration
+## User Registration
 
-### New Registration System
-The system now provides separate registration paths for Students and Admins, with no "Regular User" option.
+### Persistent Registration System
+One of the major improvements is that **user registrations now persist between sessions**. Once you register, you never need to register again.
 
 ### Registration Process
-1. **Choose Account Type**: Select either Student or Admin
-2. **Enter Information**: 
-   - Username (must be unique)
-   - Email address (must be valid)
-   - Password (minimum 6 characters)
-   - Confirm password
-3. **Email Verification**: OTP sent to your email
-4. **Complete Registration**: Enter OTP to activate account
+1. **Click "Register"** on the login screen
+2. **Fill Registration Form**:
+   - Username: Choose a unique username
+   - Email: Enter a valid email address
+   - Password: Create a secure password
+   - Confirm Password: Re-enter your password
+3. **Submit Registration**: Click "OK" to create your account
+4. **Account Created**: Your account is immediately saved to the system
+5. **Login Ready**: You can now log in with your new credentials
 
-### Account Types
-- **Student Account**: 
-  - Personal scheduling access
-  - Study group participation
-  - Basic scheduling features
-  
-- **Admin Account**:
-  - Full system access
-  - User management capabilities
-  - Force scheduling permissions
-  - Advanced administrative features
+### Registration Features
+- **Automatic Saving**: Registered accounts persist between application restarts
+- **Email Validation**: System ensures valid email format
+- **Unique Checking**: Prevents duplicate usernames and emails
+- **Role Assignment**: New users automatically get Student role
+- **No Re-registration**: Register once and your account is permanent
 
 ---
 
-## Main Interface
+## OTP Verification
 
-### Dashboard Overview
-After successful login, you'll see the main dashboard with:
-- Current user information and role
-- Quick access to scheduling features
-- Recent activity summary
-- Conflict notifications (if any)
+### Enhanced OTP System
+The OTP (One-Time Password) system has been significantly improved to ensure reliable operation.
 
-### Navigation Menu
-- **Schedule**: View and manage your time slots
-- **Study Groups**: Create and join study groups
-- **Members**: Manage group members (role-dependent)
-- **Settings**: Account and system preferences
-- **Logout**: Secure logout with session cleanup
+### OTP Dialog Features
+- **Always Appears**: Verification dialog guaranteed to open with valid credentials
+- **Large Dialog**: 450x300 pixel window for better visibility
+- **Input Validation**: Only accepts 6-digit numeric codes
+- **Auto-Focus**: OTP field automatically selected for immediate typing
+- **Enter Key Support**: Press Enter to verify instead of clicking button
+- **Clear Instructions**: Helpful text guides you through the process
+- **Error Handling**: Clear error messages if OTP is incorrect
 
----
+### OTP Code Details
+- **6-Digit Format**: All codes are exactly 6 numeric digits
+- **10-Minute Expiration**: Codes valid for 10 minutes after generation
+- **Single Use**: Each code can only be used once
+- **Email Delivery**: Codes sent to your registered email address
+- **Console Display**: For testing, codes also appear in application console
 
-## Conflict-Free Scheduling
-
-### New Scheduling Features
-The system now prevents all scheduling conflicts automatically using advanced conflict detection algorithms.
-
-### How It Works
-1. **Automatic Detection**: System checks for overlaps when adding new time slots
-2. **Real-time Validation**: Immediate feedback on potential conflicts
-3. **Conflict Prevention**: New appointments blocked if they overlap existing ones
-4. **Detailed Reporting**: Shows exactly which appointments conflict
-
-### Adding Time Slots
-1. Click "Add Time Slot" or "Schedule Meeting"
-2. Select date and time range
-3. System automatically checks for conflicts
-4. If conflicts exist:
-   - View detailed conflict information
-   - Choose different time slot
-   - Or resolve conflicts first
-5. If no conflicts, appointment is added successfully
-
-### Conflict Resolution
-When conflicts are detected:
-- **View Conflicts**: See all overlapping appointments
-- **Alternative Times**: System suggests conflict-free alternatives
-- **Modify Existing**: Edit conflicting appointments if needed
-- **Force Schedule**: Admin-only option for emergency meetings
-
-### Benefits
-- **No Double-booking**: Prevents scheduling multiple appointments at the same time
-- **Clear Feedback**: Immediate notification of scheduling conflicts
-- **Smart Suggestions**: Alternative time slots when conflicts occur
-- **Data Integrity**: Maintains consistent and reliable schedules
+### Troubleshooting OTP
+If you don't receive the OTP email:
+1. Check your spam/junk folder
+2. Verify email configuration in EmailService.java
+3. Check console output for the code (testing purposes)
+4. Ensure internet connection is stable
+5. Try logging in again to generate a new code
 
 ---
 
-## Study Group Management
+## Main Application Interface
 
-### Creating Study Groups
-1. Navigate to "Study Groups" section
-2. Click "Create New Group"
-3. Enter group name and description
-4. Set initial schedule preferences
-5. Add initial members (conflict-free scheduling applies)
+### Application Layout
+After successful login, the main interface provides:
 
-### Managing Members
-- **Add Members**: Invite new participants
-- **Remove Members**: Remove inactive participants
-- **View Schedules**: See all member availability
-- **Conflict Checking**: Automatic conflict detection when adding members
+- **Calendar Panel**: Central scheduling area with time slots
+- **Member Panel**: Right sidebar showing group members
+- **Toolbar**: Quick access buttons for common actions
+- **Menu Bar**: Full feature access via menus
+- **Status Bar**: Real-time information about operations
 
-### Finding Common Times
-The system automatically finds time slots that work for all group members:
-1. Analyzes all member schedules
-2. Identifies conflict-free time slots
-3. Suggests optimal meeting times
-4. Prevents scheduling conflicts
+### Key Interface Features
+- **Auto-Save Indicators**: Status messages confirm when data is saved
+- **Role-Based Access**: Different features available based on your role
+- **Persistent State**: Interface remembers your last session
+- **Debug Output**: Console shows detailed operation information
+
+---
+
+## Schedule Management
+
+### Persistent Schedule System
+All schedule data now **automatically saves and persists between sessions**. You can close the application and resume exactly where you left off.
+
+### Finding Common Slots
+1. **Add Members**: Use the "Add" button to include group members
+2. **Find Common Slots**: Click "Find Common Slots" in toolbar or menu
+3. **View Results**: Common time slots are highlighted on the calendar
+4. **Automatic Saving**: Results are immediately saved to disk
+5. **Persistent Storage**: Slots remain available after restarting application
+
+### Schedule Features
+- **Conflict Detection**: Automatic prevention of overlapping appointments
+- **Visual Indicators**: Clear marking of available and busy times
+- **Multiple Attempts**: Can run "Find Common Slots" multiple times without losing data
+- **Group Filtering**: Find slots for specific groups or all members
+- **Time Flexibility**: 30-minute intervals with customizable duration
+
+### Adding Schedules
+1. **Menu Access**: Go to Schedule > Add Schedule
+2. **Enter Details**:
+   - Date: YYYY-MM-DD format
+   - Time: HH:MM format (24-hour)
+   - Duration: Minutes (e.g., 60 for one hour)
+3. **Automatic Saving**: Schedule immediately saved to persistent storage
+4. **Conflict Checking**: System prevents overlapping appointments
+
+---
+
+## Study Group Features
+
+### Member Management
+The member system now features **complete persistence** - added members remain in the system between sessions.
+
+### Adding Members
+1. **Click "Add" Button**: In the Members panel
+2. **Fill Member Information**:
+   - Name: Member's full name
+   - Email: Contact email address
+   - Group: Optional group assignment
+3. **Automatic Saving**: Member immediately added to persistent storage
+4. **Cross-Session Access**: Members available after application restart
+
+### Group Organization
+- **Group Assignment**: Organize members into study groups
+- **Group Scheduling**: Find common slots for specific groups
+- **Member Editing**: Update member information with persistent saving
+- **Group Statistics**: View group membership and availability
+
+### Member Features
+- **Edit Members**: Modify member information anytime
+- **Remove Members**: Delete members with confirmation
+- **Group Management**: Assign and reassign group memberships
+- **Email Integration**: Use member emails for notifications
 
 ---
 
 ## Email Notifications
 
-### OTP Delivery
-- **Login OTP**: Sent for every login attempt
-- **Registration OTP**: Sent during account creation
-- **Resend Option**: Available if OTP not received
-- **Expiration**: OTP expires after 10 minutes
+### Email System Features
+- **OTP Delivery**: Secure codes sent for every login
+- **Meeting Invitations**: Professional HTML email templates
+- **Gmail Integration**: Works with Gmail App Passwords
+- **Fallback Mode**: Graceful operation when email unavailable
 
-### Meeting Notifications
-- **Meeting Invitations**: Sent to all participants
-- **Schedule Changes**: Notifications for any updates
-- **Conflict Alerts**: Warning emails for scheduling conflicts
-- **Reminders**: Advance meeting reminders
+### Email Configuration
+To enable email functionality:
+1. **Gmail Setup**: Use a Gmail account with 2FA enabled
+2. **App Password**: Generate an App Password (not regular password)
+3. **Configuration**: Update credentials in EmailService.java
+4. **Testing**: Test with first login OTP
 
-### Email Requirements
-- **Valid Email**: All accounts must have working email addresses
-- **Gmail Recommended**: System optimized for Gmail SMTP
-- **App Password**: Required for security (not regular password)
+---
+
+## Data Persistence
+
+### Automatic Data Saving
+One of the major improvements is **comprehensive data persistence**:
+
+- **User Accounts**: All registrations saved permanently
+- **Schedule Data**: All scheduling information persists between sessions
+- **Member Information**: Added members remain available
+- **Application State**: Resume exactly where you left off
+
+### File Storage System
+- **JSON Format**: Human-readable data files
+- **Automatic Creation**: Data files created automatically
+- **Multiple Locations**: System checks multiple file paths for reliability
+- **Backup Strategy**: Robust file handling with error recovery
+
+### Data Files
+- **users.json**: Contains all registered user accounts
+- **data/members.json**: Stores group member information
+- **data/schedules.json**: Contains all scheduling data
+- **data/study_group.json**: Study group configuration
 
 ---
 
 ## Role-Based Features
 
-### Student Role Features
-- **Personal Scheduling**: Manage your own time slots
-- **Study Group Participation**: Join and participate in groups
-- **Conflict Prevention**: Automatic conflict detection
-- **Basic Notifications**: Email updates for your activities
+### Admin Features
+- **Full Access**: All scheduling and management features
+- **Emergency Scheduling**: Force schedule meetings during conflicts
+- **User Management**: Access to user administration features
+- **Force Schedule Dialog**: Override scheduling conflicts when necessary
 
-### Admin Role Features
-- **All Student Features**: Full access to student functionality
-- **User Management**: Create and manage user accounts
-- **Force Scheduling**: Override conflicts for emergency meetings
-- **System Configuration**: Access to system settings
-- **Advanced Reporting**: Detailed system usage reports
+### Student Features
+- **Standard Scheduling**: Add schedules and find common slots
+- **Group Participation**: Join and participate in study groups
+- **Meeting Scheduling**: Schedule meetings during available times
+- **Member Management**: Add and manage group members
 
-### Permission System
-- **Role-Based Access**: Different features based on user role
-- **Secure Operations**: Sensitive operations require admin privileges
-- **Audit Trail**: All administrative actions are logged
+### Feature Restrictions
+- **Force Scheduling**: Only available to Admin users
+- **User Administration**: Admin-only features disabled for students
+- **Emergency Override**: Students cannot force schedule during conflicts
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
 #### Login Problems
-- **Problem**: Not receiving OTP
-- **Solution**: Check spam folder, verify email address, try resend option
-- **Alternative**: Contact admin if email issues persist
+**Issue**: "No pending verification found" error
+- **Solution**: Updated system now handles this automatically
+- **Note**: OTP dialog will always appear with valid credentials
 
-#### Scheduling Conflicts
-- **Problem**: Cannot schedule desired time
-- **Solution**: Check conflict report, choose alternative time, or resolve existing conflicts
-- **Note**: System prevents double-booking for data integrity
+**Issue**: OTP dialog doesn't appear
+- **Solution**: System now guarantees OTP dialog opens
+- **Check**: Verify credentials are correct
 
-#### Email Configuration
-- **Problem**: OTP emails not sending
-- **Solution**: Verify Gmail App Password, check internet connection, update email settings
+#### Registration Issues
+**Issue**: "User already exists" error
+- **Solution**: Check if you've already registered (accounts persist)
+- **Action**: Try logging in instead of registering
 
-#### Database Connection
-- **Problem**: Cannot connect to database
-- **Solution**: Verify MySQL is running, check connection settings, ensure database exists
+#### Data Not Saving
+**Issue**: Members or schedules disappear
+- **Solution**: System now auto-saves all changes
+- **Check**: Look for save confirmation messages in status bar
 
-### Getting Help
-1. Check this user guide for solutions
-2. Review the FAQ section
-3. Contact system administrator
-4. Check application logs for error details
+#### Email Problems
+**Issue**: Not receiving OTP emails
+- **Solutions**:
+  - Check spam/junk folder
+  - Verify EmailService.java configuration
+  - Check console output for testing codes
+  - Ensure stable internet connection
+
+### Debug Information
+- **Console Output**: Detailed logging for troubleshooting
+- **Status Messages**: Real-time feedback on operations
+- **File Locations**: Check users.json and data/ folder for saved information
 
 ---
 
 ## FAQ
 
+### General Questions
+
+**Q: Do I need to register every time I use the application?**
+A: No! User registration now persists between sessions. Register once and your account is saved permanently.
+
+**Q: Will my schedules and members be saved between sessions?**
+A: Yes! All data is automatically saved and will be exactly as you left it when you restart the application.
+
+**Q: Do I need a database to run this application?**
+A: No! The application uses file-based storage and doesn't require any database setup.
+
 ### Authentication Questions
 
-**Q: Why do I need OTP for every login?**
-A: Enhanced security requires OTP verification for every login to protect user accounts and data.
+**Q: Is OTP verification required for every login?**
+A: Yes, email-based OTP verification is mandatory for all login attempts for enhanced security.
 
-**Q: Can I disable OTP verification?**
-A: No, OTP verification is mandatory and cannot be disabled for security reasons.
+**Q: What if I don't receive the OTP email?**
+A: Check your spam folder, verify email configuration, and look at the console output where OTP codes are displayed for testing purposes.
 
-**Q: What if I don't receive the OTP?**
-A: Check your spam folder, verify your email address, and use the resend option if needed.
-
-### Scheduling Questions
-
-**Q: Why can't I schedule overlapping meetings?**
-A: The system prevents conflicts to ensure data integrity and avoid double-booking.
-
-**Q: How do I resolve scheduling conflicts?**
-A: View the conflict report, choose alternative times, or modify existing appointments.
-
-**Q: Can admins override scheduling conflicts?**
-A: Yes, admins have force scheduling capabilities for emergency situations.
-
-### Account Questions
-
-**Q: What's the difference between Student and Admin accounts?**
-A: Students have basic scheduling access, while Admins have full system management capabilities.
-
-**Q: Can I change my account type?**
-A: Contact an administrator to change your account type.
-
-**Q: What happened to Regular User accounts?**
-A: Regular User accounts have been removed. You now choose between Student and Admin accounts.
+**Q: Can I bypass the OTP verification?**
+A: No, OTP verification is mandatory and cannot be bypassed for security reasons.
 
 ### Technical Questions
 
-**Q: What email providers are supported?**
-A: Gmail is recommended, but other SMTP providers can be configured.
+**Q: What happens if I don't have internet during login?**
+A: Internet is required for OTP delivery. The application will show appropriate error messages if email delivery fails.
 
-**Q: Is my data secure?**
-A: Yes, passwords are encrypted, OTP provides additional security, and all data is stored securely.
+**Q: How long are OTP codes valid?**
+A: OTP codes expire after 10 minutes and can only be used once.
 
-**Q: Can I use this offline?**
-A: No, internet connection is required for OTP verification and email functionality.
+**Q: Where is my data stored?**
+A: Data is stored in JSON files in the application directory (users.json and data/ folder).
+
+### Feature Questions
+
+**Q: What's the difference between Admin and Student accounts?**
+A: Admins have full access including emergency scheduling and user management, while Students have standard scheduling features.
+
+**Q: Can I edit member information after adding them?**
+A: Yes, select a member and click "Edit" to modify their information. Changes are automatically saved.
+
+**Q: How do I find common meeting times?**
+A: Add your group members, then click "Find Common Slots" in the toolbar or menu. Results are automatically saved.
 
 ---
 
 ## Support
 
-For additional help:
-- Review the [CONFIGURATION.md](CONFIGURATION.md) file
-- Check the [README.md](README.md) for technical details
-- Contact your system administrator
-- Create an issue in the project repository
+For additional support or questions:
+- Check the console output for detailed debug information
+- Review the CONFIGURATION.md file for setup details
+- Ensure all prerequisites are properly installed
+- Verify email configuration for OTP functionality
 
----
-
-**Last Updated**: July 2025
-**Version**: 2.0 with Enhanced Security and Conflict-Free Scheduling
+**Version**: 2.0  
+**Last Updated**: July 2025  
+**Repository**: https://github.com/punam06/studentStudyScheduling
