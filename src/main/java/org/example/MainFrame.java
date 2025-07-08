@@ -1073,17 +1073,33 @@ public class MainFrame extends JFrame {
                 LocalDateTime endDateTime = startDateTime.plusMinutes(duration);
                 TimeSlot newSlot = new TimeSlot(startDateTime, endDateTime);
 
-                // Save schedule using DataManager
-                dataManager.saveSchedule(newSlot, studyGroup);
+                // Debug: Check members before adding schedule
+                System.out.println("DEBUG: Before adding schedule - Members count: " + studyGroup.getMembers().size());
 
-                // Update calendar grid
+                // Add the time slot directly to the current study group (preserves existing members)
+                studyGroup.addTimeSlot(newSlot);
+
+                // Save the entire study group with all existing data preserved
+                dataManager.saveStudyGroup(studyGroup);
+
+                // Update calendar grid to show the new time slot
                 calendarGrid.addTimeSlot(newSlot);
 
-                statusBar.setMessage("Schedule added for " + date + " " + time);
+                // Refresh the UI to show current members and groups
+                loadMembersIntoUI();
+
+                // Debug: Confirm members are still there
+                System.out.println("DEBUG: After adding schedule - Members count: " + studyGroup.getMembers().size());
+
+                statusBar.setMessage("Schedule added for " + date + " " + time + " - All data preserved");
+
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this,
-                        "Invalid date, time, or duration. Please check your input.",
+                        "Invalid date, time, or duration. Please check your input.\nError: " + e.getMessage(),
                         "Input Error", JOptionPane.ERROR_MESSAGE);
+
+                // Print stack trace for debugging
+                e.printStackTrace();
             }
         }
     }

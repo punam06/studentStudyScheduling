@@ -6,15 +6,21 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import org.example.auth.SimpleAuthService;
+import org.example.util.EmailService;
 import org.example.view.LoginView;
 
 public class Main {
     private static SimpleAuthService authService;
+    private static EmailService emailService;
 
     public static void main(String[] args) {
         System.out.println("Starting Study Squad Synchronizer application...");
 
         try {
+            // Initialize email service and display configuration status
+            emailService = new EmailService();
+            System.out.println(emailService.getConfigurationStatus());
+
             // Initialize simple authentication service (file-based, no database required)
             authService = new SimpleAuthService();
 

@@ -6,28 +6,69 @@ import org.example.model.TimeSlot;
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Properties;
 
 /**
  * Email service for sending meeting notifications and OTP codes.
- * Handles email configuration gracefully with fallback for demo mode.
+ * Uses centralized configuration from email.properties file.
  */
 public class EmailService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
 
-    // Email configuration - update these with your email settings
-    private static final String SMTP_HOST = "smtp.gmail.com";
-    private static final String SMTP_PORT = "587";
-    private static final String EMAIL_USERNAME = "punam.papri@gmail.com"; // Replace with your email
-    private static final String EMAIL_PASSWORD = "tgct ntes ptck yzet"; // Replace with your app password
-    private static final String FROM_EMAIL = "punam.papri@gmail.com"; // Replace with your email
+    // Email configuration loaded from properties file
+    private final Properties emailConfig;
+    private final boolean emailEnabled;
+    private final String smtpHost;
+    private final String smtpPort;
+    private final String emailUsername;
+    private final String emailPassword;
+    private final String fromEmail;
+    private final String otpSubject;
 
-    // Check if email is properly configured
-    private static final boolean EMAIL_CONFIGURED = !EMAIL_USERNAME.equals("your-email@gmail.com") &&
-                                                   !EMAIL_PASSWORD.equals("your-app-password");
+    /**
+     * Constructor that loads email configuration from properties file.
+     */
+    public EmailService() {
+        this.emailConfig = new Properties();
+        loadEmailConfiguration();
+
+        // Load configuration values
+        this.emailEnabled = Boolean.parseBoolean(emailConfig.getProperty("email.enabled", "true"));
+        this.smtpHost = emailConfig.getProperty("smtp.host", "smtp.gmail.com");
+        this.smtpPort = emailConfig.getProperty("smtp.port", "587");
+        this.emailUsername = emailConfig.getProperty("email.username", "");
+        this.emailPassword = emailConfig.getProperty("email.password", "");
+        this.fromEmail = emailConfig.getProperty("email.from", emailUsername);
+        this.otpSubject = emailConfig.getProperty("email.subject.otp", "Your OTP Code - Student Scheduling System");
+
+        // Check if email is properly configured
+        if (emailEnabled && (emailUsername.isEmpty() || emailPassword.isEmpty())) {
+            System.err.println("⚠️  Email configuration incomplete. Please check email.properties file.");
+            System.out.println("📧 Email service will run in demo mode until properly configured.");
+        }
+    }
+
+    /**
+     * Loads email configuration from the properties file.
+     */
+    private void loadEmailConfiguration() {
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("email.properties")) {
+            if (input == null) {
+                System.err.println("⚠️  email.properties file not found. Using default configuration.");
+                return;
+            }
+            emailConfig.load(input);
+            System.out.println("✅ Email configuration loaded successfully.");
+        } catch (IOException e) {
+            System.err.println("❌ Error loading email configuration: " + e.getMessage());
+            System.out.println("📧 Using default email settings.");
+        }
+    }
 
     /**
      * Template types for different kinds of email messages.
@@ -41,19 +82,19 @@ public class EmailService {
 
     /**
      * Sends an OTP code to the specified email address.
-     * Falls back to demo mode if email is not configured.
+     * Uses centralized email configuration for all OTP emails.
      *
      * @param email The email address to send the OTP to
      * @param otpCode The OTP code to send
      * @return true if the email was sent successfully or in demo mode, false otherwise
      */
     public boolean sendOTP(String email, String otpCode) {
-        // Check if email is configured
-        if (!EMAIL_CONFIGURED) {
+        // Check if email is enabled and configured
+        if (!emailEnabled || emailUsername.isEmpty() || emailPassword.isEmpty()) {
             System.out.println("📧 EMAIL DEMO MODE - OTP would be sent to: " + email);
             System.out.println("🔑 Your OTP Code: " + otpCode);
-            System.out.println("📝 Note: Email not configured. Using demo mode.");
-            System.out.println("   To enable real emails, update EmailService.java with your Gmail credentials.");
+            System.out.println("📝 Note: Email not configured or disabled. Using demo mode.");
+            System.out.println("   To enable real emails, update email.properties with your Gmail credentials.");
             System.out.println("────────────────────────────────────────────────");
             return true; // Return true for demo mode
         }
@@ -62,9 +103,9 @@ public class EmailService {
             Session session = createEmailSession();
 
             Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(FROM_EMAIL));
+            message.setFrom(new InternetAddress(fromEmail));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email));
-            message.setSubject("Your OTP Code - Student Scheduling System");
+            message.setSubject(otpSubject);
 
             String emailContent = generateOTPEmail(otpCode);
             message.setContent(emailContent, "text/html");
@@ -79,7 +120,7 @@ public class EmailService {
             // Provide helpful error messages
             if (e.getMessage().contains("Authentication failed")) {
                 System.err.println("💡 Email authentication failed. Please check:");
-                System.err.println("   1. Gmail address is correct");
+                System.err.println("   1. Gmail address is correct in email.properties");
                 System.err.println("   2. App Password is correct (not your regular password)");
                 System.err.println("   3. 2-Factor Authentication is enabled on Gmail");
             } else if (e.getMessage().contains("Connection")) {
@@ -93,7 +134,8 @@ public class EmailService {
             return true; // Return true to allow login in demo mode
         } catch (Exception e) {
             System.err.println("❌ Unexpected error sending OTP: " + e.getMessage());
-            e.printStackTrace();
+            // Log error for debugging without full stack trace
+            System.err.println("Error details: " + e.getClass().getSimpleName());
 
             // Fall back to demo mode
             System.out.println("🔄 Falling back to demo mode...");
@@ -109,7 +151,7 @@ public class EmailService {
      * @return true if email is configured with real credentials, false if using defaults
      */
     public boolean isEmailConfigured() {
-        return EMAIL_CONFIGURED;
+        return emailEnabled && !emailUsername.isEmpty() && !emailPassword.isEmpty();
     }
 
     /**
@@ -118,10 +160,10 @@ public class EmailService {
      * @return Status message about email configuration
      */
     public String getConfigurationStatus() {
-        if (EMAIL_CONFIGURED) {
+        if (isEmailConfigured()) {
             return "✅ Email service configured and ready";
         } else {
-            return "⚠️ Email service in demo mode - update credentials in EmailService.java";
+            return "⚠️ Email service in demo mode - update credentials in email.properties";
         }
     }
 
@@ -134,14 +176,14 @@ public class EmailService {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", SMTP_HOST);
-        props.put("mail.smtp.port", SMTP_PORT);
+        props.put("mail.smtp.host", smtpHost);
+        props.put("mail.smtp.port", smtpPort);
         props.put("mail.smtp.ssl.protocols", "TLSv1.2");
 
         return Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(EMAIL_USERNAME, EMAIL_PASSWORD);
+                return new PasswordAuthentication(emailUsername, emailPassword);
             }
         });
     }

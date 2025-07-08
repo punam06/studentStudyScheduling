@@ -37,30 +37,45 @@
    private static final String DB_PASSWORD = "YOUR_MYSQL_ROOT_PASSWORD";
    ```
 
-## Email Configuration (MANDATORY)
+## Email Configuration (Centralized)
 
-### Gmail Setup (Required for OTP)
-Since OTP verification is now mandatory for all logins, proper email configuration is essential.
+### Gmail Setup (Single App Password for All Users)
+The system now uses a centralized email configuration that sends OTPs automatically to all users using a single Gmail account and app password.
 
-1. **Enable 2-Factor Authentication** on your Gmail account
-2. **Generate App Password**:
-   - Go to Google Account → Security → 2-Step Verification
-   - Click "App passwords"
-   - Select "Mail" and generate password
-   - Copy the 16-character password
+1. **Administrator Email Setup** (One-time setup):
+   - Enable 2-Factor Authentication on a dedicated Gmail account
+   - Generate App Password:
+     - Go to Google Account → Security → 2-Step Verification
+     - Click "App passwords"
+     - Select "Mail" and generate password
+     - Copy the 16-character password
 
-3. **Update Email Settings**:
-   Edit `src/main/java/org/example/util/EmailService.java`:
-   ```java
-   private static final String EMAIL_USERNAME = "your-email@gmail.com";
-   private static final String EMAIL_PASSWORD = "your-16-character-app-password";
+2. **Configure Email Properties**:
+   Edit `src/main/resources/email.properties`:
+   ```properties
+   # Email Configuration for Student Scheduling System
+   email.from=your-admin-email@gmail.com
+   email.username=your-admin-email@gmail.com
+   email.password=your-16-character-app-password
+   email.enabled=true
    ```
 
+3. **No User Email Configuration Required**:
+   - Users only need to provide their email address during registration
+   - OTPs are automatically sent from the centralized admin email
+   - No individual email setup required for users
+
 ### Important Email Notes
-- **OTP Mandatory**: System requires working email for OTP delivery
-- **No Bypass**: Email configuration cannot be skipped
-- **Testing**: Use default accounts to test OTP functionality
-- **Spam Folder**: Check spam if OTP emails don't arrive
+- **Single Configuration**: Only one Gmail account needed for the entire system
+- **Automatic OTP Delivery**: All OTPs sent automatically using admin credentials
+- **User Registration**: Users just provide their email - no password setup needed
+- **Fallback Mode**: System falls back to demo mode if email not configured
+- **Testing**: Check console output for OTP codes in demo mode
+
+### Email Configuration Status
+The system will display the email configuration status on startup:
+- ✅ "Email service configured and ready" - Real emails will be sent
+- ⚠️ "Email service in demo mode" - OTP codes shown in console
 
 ## Security Configuration
 
